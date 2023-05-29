@@ -1,9 +1,12 @@
-import DatabaseRunner from '../types/DatabaseRunner'
-import DatabaseRunnerConfig from '../types/DatabaseRunnerConfig'
+import Database from '../types/Database'
 
-console.log('hello')
-const runner: DatabaseRunner = (config: DatabaseRunnerConfig): void => {
-  console.log('localStorage runner', config)
+const runner: Database = {
+  get: (key: string): Promise<string | undefined> => {
+    return Promise.resolve(localStorage.getItem(key) || undefined)
+  },
+  set: async (key: string, value: string): Promise<void> => {
+    localStorage.setItem(key, value)
+  },
 }
 
 export default runner
