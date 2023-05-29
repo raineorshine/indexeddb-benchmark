@@ -4,8 +4,6 @@ import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
 import Benchmark from './lib/Benchmark'
 
-Benchmark.options.maxTime = 0.001
-
 const dbs = { localStorage, indexedDB }
 type AAA = keyof typeof dbs
 
@@ -26,7 +24,6 @@ interface Form {
 function App() {
   // benchmark config
   const [iterations, setIterations] = useState<number>(1000)
-  const suite = useMemo<any>(() => new Benchmark.Suite(), [])
 
   // form validation
   const [errors, setErrors] = useState<Form>({})
@@ -46,7 +43,6 @@ function App() {
 
   const clearBenchmarkResults = () => {
     setBenchmarkResults({})
-    suite.reset()
   }
 
   const setBenchmarkResult = (name: keyof typeof dbs, result: string) => {
@@ -56,35 +52,31 @@ function App() {
     }))
   }
 
+  const benchmark = useMemo(
+    () =>
+      Benchmark({
+        cycle: (name, { mean }) => {
+          setBenchmarkResult(name as keyof typeof dbs, mean.toString())
+        },
+      }),
+    [],
+  )
   const run = async () => {
+    benchmark.clear()
     clearBenchmarkResults()
-    clearDbs()
+    await clearDbs()
 
+    // add a case for each db to benchmark
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
-      suite.add(name, {
-        fn: async (deferred: any) => {
-          await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
-          deferred.resolve()
-        },
-        defer: true,
+      benchmark.add(name, async () => {
+        await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
       })
     }
 
-    suite
-      .on('cycle', (e: any) => {
-        console.log('e', e.target)
-        setBenchmarkResult(e.target.name, e.target.toString())
-      })
-      .on('complete', () => {
-        console.log('Done')
-        // console.log('Fastest is ' + suite.filter('fastest').map('name'))
-      })
-      // run async
-      .run({
-        async: true,
-      })
+    await benchmark.run()
+    console.log('Done')
   }
 
   return (
