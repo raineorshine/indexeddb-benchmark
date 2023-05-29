@@ -47,14 +47,24 @@ const Benchmark = ({
   let totalms = 0
 
   return {
+    /** Clears all cases. */
     clear: () => {
       cases.length = 0
     },
-    add: (name: string, f: () => Promise<void>, setup?: () => Promise<void>) => {
-      cases.push({ name, f, setup })
+
+    /** Adds a new case. */
+    add: (
+      name: string,
+      f: () => Promise<void> | void,
+      { setup, teardown }: { setup?: () => Promise<void>; teardown?: () => Promise<void> } = {},
+    ) => {
+      cases.push({ name, f, setup, teardown })
     },
+
+    /** Runs all cases and measures performance. */
     run: async () => {
       await setup?.()
+
       for (let i = 0; i < cases.length; i++) {
         const { name, f, setup, teardown } = cases[i]
         setup?.()
@@ -64,12 +74,14 @@ const Benchmark = ({
           const end = performance.now()
           const ms = end - start
           totalms += ms
-          iteration?.(name, { i: j, ms, mean: totalms / j })
+          iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
         }
         teardown?.()
         cycle?.(name, { mean: totalms / iterations })
       }
+
       await teardown?.()
+      totalms = 0
     },
   }
 }

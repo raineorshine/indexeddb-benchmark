@@ -1,11 +1,28 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import throttle from 'lodash.throttle'
 import './App.css'
 import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
 import Benchmark from './lib/Benchmark'
 
+// number of iterations per benchmark case
+const ITERATIONS = 2000
+
+/** Formats a number with commas in the thousands place. */
+const numberWithCommas = (n: number | string) => {
+  const parts = n.toString().split('.')
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return parts.join('.')
+}
+
+/** Formats a number as a percentage. */
+const formatPercentage = (n: number) => (n * 100).toFixed(0) + '%'
+
+/** Formats milliseconds. */
+const formatMilliseconds = (ms: number) =>
+  ms ? `${numberWithCommas(ms)} ms — ${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '0'
+
 const dbs = { localStorage, indexedDB }
-type AAA = keyof typeof dbs
 
 const clearDbs = async (): Promise<void> => {
   const dbEntries = Object.entries(dbs)
@@ -23,7 +40,7 @@ interface Form {
 
 function App() {
   // benchmark config
-  const [iterations, setIterations] = useState<number>(1000)
+  const [iterations, setIterations] = useState<number>(ITERATIONS)
 
   // form validation
   const [errors, setErrors] = useState<Form>({})
@@ -52,11 +69,22 @@ function App() {
     }))
   }
 
+  // throttled progress updater
+  const progress = useCallback(
+    throttle((name: string, { i, ms }: { i: number; ms: number }) => {
+      setBenchmarkResult(name as keyof typeof dbs, formatPercentage(i / iterations))
+    }, 16.666),
+    [],
+  )
+
   const benchmark = useMemo(
     () =>
       Benchmark({
+        iterations,
+        iteration: progress,
         cycle: (name, { mean }) => {
-          setBenchmarkResult(name as keyof typeof dbs, mean.toString())
+          progress.cancel()
+          setBenchmarkResult(name as keyof typeof dbs, formatMilliseconds(mean))
         },
       }),
     [],
@@ -76,7 +104,6 @@ function App() {
     }
 
     await benchmark.run()
-    console.log('Done')
   }
 
   return (
