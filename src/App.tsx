@@ -1,8 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import localStorage from './dbs/localStorage'
+import indexedDB from './dbs/indexedDB'
+import Benchmark from './lib/Benchmark'
 
-const dbs = { localStorage }
+Benchmark.options.maxTime = 0.001
+
+const dbs = { localStorage, indexedDB }
+type AAA = keyof typeof dbs
+
+const clearDbs = async (): Promise<void> => {
+  const dbEntries = Object.entries(dbs)
+  for (let i = 0; i < dbEntries.length; i++) {
+    const [name, db] = dbEntries[i]
+    await db.clear()
+  }
+}
+
+clearDbs()
 
 interface Form {
   iterations?: string
@@ -11,6 +26,7 @@ interface Form {
 function App() {
   // benchmark config
   const [iterations, setIterations] = useState<number>(1000)
+  const suite = useMemo<any>(() => new Benchmark.Suite(), [])
 
   // form validation
   const [errors, setErrors] = useState<Form>({})
@@ -25,44 +41,50 @@ function App() {
 
   // benchmark results
   const [benchmarkResults, setBenchmarkResults] = useState<{
-    [key: string]: {
-      iterations: number
-      time: number
-    }
+    [key: string]: string
   }>({})
-  // const [indexedDBResults, setIndexedDBResults] = useState<number>()
-  // const [opfsResults, setOPFSResults] = useState<number>(null)
 
   const clearBenchmarkResults = () => {
     setBenchmarkResults({})
+    suite.reset()
+  }
+
+  const setBenchmarkResult = (name: keyof typeof dbs, result: string) => {
+    setBenchmarkResults(results => ({
+      ...results,
+      [name]: result,
+    }))
   }
 
   const run = async () => {
     clearBenchmarkResults()
+    clearDbs()
+
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
-      const t = Date.now()
-      for (let j = 0; j < iterations; j++) {
-        await db.set(j.toString(), j.toString())
-        setBenchmarkResults(results => ({
-          ...results,
-          [name]: {
-            iterations: (results[name]?.iterations || 0) + 1,
-            time: 0,
-          },
-        }))
-      }
-      const time = Date.now() - t
-
-      setBenchmarkResults(results => ({
-        ...results,
-        [name]: {
-          ...results[name],
-          time,
+      suite.add(name, {
+        fn: async (deferred: any) => {
+          await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
+          deferred.resolve()
         },
-      }))
+        defer: true,
+      })
     }
+
+    suite
+      .on('cycle', (e: any) => {
+        console.log('e', e.target)
+        setBenchmarkResult(e.target.name, e.target.toString())
+      })
+      .on('complete', () => {
+        console.log('Done')
+        // console.log('Fastest is ' + suite.filter('fastest').map('name'))
+      })
+      // run async
+      .run({
+        async: true,
+      })
   }
 
   return (
@@ -92,17 +114,15 @@ function App() {
         <tbody>
           <tr>
             <th>localStorage</th>
-            <td>
-              {benchmarkResults.localStorage ? (1000 / benchmarkResults.localStorage.time).toFixed(1) : '...'} / sec
-            </td>
+            <td>{benchmarkResults.localStorage}</td>
           </tr>
           <tr>
             <th>IndexedDB</th>
-            {/*<td>{localStorageResults ?? '...'}</td>*/}
+            <td>{benchmarkResults.indexedDB}</td>
           </tr>
           <tr>
-            <th>localStorage</th>
-            {/*<td>{localStorageResults ?? '...'}</td>*/}
+            <th>OPFS</th>
+            <td>{benchmarkResults.opfs}</td>
           </tr>
         </tbody>
       </table>
