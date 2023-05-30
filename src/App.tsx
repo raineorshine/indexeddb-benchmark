@@ -61,7 +61,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
       <th>{name}</th>
       <td
         style={{
-          minWidth: '2em',
+          minWidth: '2.5em',
           paddingRight: '0.5em',
           color: result?.progress === 1 ? 'gray' : result?.prefill && result.prefill < 1 ? 'goldenrod' : undefined,
         }}
@@ -72,7 +72,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
           ? formatPercentage(result.prefill)
           : ''}
       </td>
-      <td>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
+      <td style={{ minWidth: '3.5em' }}>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
       <td
         title={
           result?.mean && result.mean <= 1
@@ -86,6 +86,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
         style={{
           color:
             result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 40 ? 'tomato' : undefined,
+          minWidth: '4.5em',
           textAlign: 'left',
         }}
       >
@@ -240,6 +241,54 @@ function App() {
     setRunning(false)
   }
 
+  function FormRow({
+    description,
+    label,
+    value,
+    set,
+  }: {
+    description: string
+    label: string
+    value: string
+    set: (value: string) => void
+  }) {
+    return (
+      <>
+        <tr>
+          <td style={{ width: '25%', maxWidth: '12em' }}>
+            <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
+              {label}:
+            </span>
+          </td>
+          <td style={{ textAlign: 'left' }}>
+            <input
+              type='number'
+              value={value}
+              onChange={e => {
+                const value = parseInt(e.target.value, 10)
+                if (isNaN(value)) {
+                  setError(label.toLowerCase() as any)
+                  return
+                }
+                set(e.target.value)
+              }}
+              style={{
+                width: '5em',
+                padding: '0.25em 0.5em',
+                textAlign: 'right',
+              }}
+            />
+          </td>
+        </tr>
+        <tr>
+          <td colSpan={2}>
+            <p style={{ color: 'gray', margin: '0.5em 1em 1em', maxWidth: '16em', textAlign: 'left' }}>{description}</p>
+          </td>
+        </tr>
+      </>
+    )
+  }
+
   return (
     <div
       className='App'
@@ -256,51 +305,23 @@ function App() {
       </p>
 
       <section style={{ margin: '2em' }}>
-        <h2>Config</h2>
-        <p>
-          <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
-            Prefill:
-          </span>
-          <input
-            type='number'
-            value={prefill}
-            onChange={e => {
-              const prefill = parseInt(e.target.value, 10)
-              if (isNaN(prefill)) {
-                setError('prefill')
-                return
-              }
-              setPrefill(prefill)
-            }}
-            style={{
-              width: '5em',
-              padding: '0.25em 0.5em',
-              textAlign: 'right',
-            }}
-          />
-        </p>
-        <p>
-          <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
-            Iterations:
-          </span>
-          <input
-            type='number'
-            value={iterations}
-            onChange={e => {
-              const iterations = parseInt(e.target.value, 10)
-              if (isNaN(iterations)) {
-                setError('iterations')
-                return
-              }
-              setIterations(iterations)
-            }}
-            style={{
-              width: '5em',
-              padding: '0.25em 0.5em',
-              textAlign: 'right',
-            }}
-          />
-        </p>
+        <h2 style={{ marginBottom: '1.2em' }}>Config</h2>
+        <table style={{ marginLeft: '3em', width: '100%' }}>
+          <tbody>
+            <FormRow
+              label='Prefill'
+              description='Number of insertions to execute before starting measurements.'
+              value={prefill.toString()}
+              set={value => setPrefill(parseInt(value, 10))}
+            />
+            <FormRow
+              label='Iterations'
+              description='Number of iterations to measure for each case.'
+              value={iterations.toString()}
+              set={value => setIterations(parseInt(value, 10))}
+            />
+          </tbody>
+        </table>
       </section>
 
       <section style={{ margin: '2em' }}>
