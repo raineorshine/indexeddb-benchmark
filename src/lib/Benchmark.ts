@@ -62,6 +62,11 @@ const Benchmark = ({
   /** Run all the iterations for a single case. */
   const runCase = async ({ name, setup, teardown, f }: BenchmarkCase): Promise<void> => {
     await setup?.(name)
+    if (abort) {
+      await teardown?.(name)
+      reset()
+      return
+    }
     for (let j = 0; j < iterations; j++) {
       if (abort) {
         await teardown?.(name)
@@ -98,6 +103,7 @@ const Benchmark = ({
     for (let i = 0; i < cases.length; i++) {
       const { name, f, setup, teardown } = cases[i]
       await runCase(cases[i])
+      if (abort) return
     }
 
     await teardown?.()
