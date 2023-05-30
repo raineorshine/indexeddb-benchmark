@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import throttle from 'lodash.throttle'
 import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
 import Benchmark from './lib/Benchmark'
 
+interface BenchmarkResult {
+  mean?: number
+  progress?: number
+}
+
 // number of iterations per benchmark case
-const ITERATIONS = 2000
+const DEFAULT_ITERATIONS = 2000
+
+// number of iterations per benchmark case
+const DEFAULT_PREFILL = 1000
 
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
@@ -39,12 +47,36 @@ clearDbs()
 
 interface Form {
   iterations?: string
+  prefill?: string
+}
+
+function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkResult }) {
+  return (
+    <tr>
+      <th>{name}</th>
+      <td
+        style={{
+          minWidth: '2em',
+          paddingRight: '0.5em',
+          color: result?.progress === 1 ? 'gray' : undefined,
+        }}
+      >
+        {result?.progress ? formatPercentage(result?.progress) : ''}
+      </td>
+      <td>{result?.mean ? formatMilliseconds(result?.mean) : ''}</td>
+      <td style={{ textAlign: 'left' }}>{result?.mean ? formatRate(result?.mean) : ''}</td>
+    </tr>
+  )
 }
 
 function App() {
   // benchmark config
-  const [iterations, setIterations] = useState<number>(ITERATIONS)
+  const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
+  const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
   const [running, setRunning] = useState<boolean>(false)
+
+  /** Generate a name for a prefill case. */
+  const prefillName = (name: string) => `${name} (prefilled)`
 
   // form validation
   const [errors, setErrors] = useState<Form>({})
@@ -59,10 +91,7 @@ function App() {
 
   // benchmark results
   const [benchmarkResults, setBenchmarkResults] = useState<{
-    [key: string]: {
-      mean?: number
-      progress?: number
-    }
+    [key: string]: BenchmarkResult
   }>({})
 
   const clearBenchmarkResults = () => {
@@ -120,16 +149,23 @@ function App() {
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
-      benchmark.add(
-        name,
-        async () => {
-          await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
+      const set = async () => {
+        await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
+      }
+      benchmark.add(name, set, {
+        setup: db.clear,
+        teardown: db.clear,
+      })
+      // prefill
+      benchmark.add(prefillName(name), set, {
+        setup: async () => {
+          await db.clear()
+          for (let i = 0; i < prefill; i++) {
+            await set()
+          }
         },
-        {
-          setup: db.clear,
-          teardown: db.clear,
-        },
-      )
+        teardown: db.clear,
+      })
     }
 
     await benchmark.run()
@@ -153,6 +189,26 @@ function App() {
 
       <section style={{ margin: '2em' }}>
         <h2>Config</h2>
+        <p>
+          Prefill:{' '}
+          <input
+            type='number'
+            value={prefill}
+            onChange={e => {
+              const prefill = parseInt(e.target.value, 10)
+              if (isNaN(prefill)) {
+                setError('prefill')
+                return
+              }
+              setPrefill(prefill)
+            }}
+            style={{
+              width: '5em',
+              padding: '0.25em 0.5em',
+              textAlign: 'right',
+            }}
+          />
+        </p>
         <p>
           Iterations:{' '}
           <input
@@ -179,45 +235,12 @@ function App() {
         <h2>Results</h2>
         <table>
           <tbody>
-            <tr>
-              <th>localStorage</th>
-              <td
-                style={{
-                  minWidth: '2em',
-                  paddingRight: '0.5em',
-                  color: benchmarkResults.localStorage?.progress === 1 ? 'gray' : undefined,
-                }}
-              >
-                {benchmarkResults.localStorage?.progress
-                  ? formatPercentage(benchmarkResults.localStorage?.progress)
-                  : ''}
-              </td>
-              <td>
-                {benchmarkResults.localStorage?.mean ? formatMilliseconds(benchmarkResults.localStorage?.mean) : ''}
-              </td>
-              <td style={{ textAlign: 'left' }}>
-                {benchmarkResults.localStorage?.mean ? formatRate(benchmarkResults.localStorage?.mean) : ''}
-              </td>
-            </tr>
-            <tr>
-              <th>IndexedDB</th>
-              <td
-                style={{
-                  minWidth: '2em',
-                  paddingRight: '0.5em',
-                  color: benchmarkResults.indexedDB?.progress === 1 ? 'gray' : undefined,
-                }}
-              >
-                {benchmarkResults.indexedDB?.progress ? formatPercentage(benchmarkResults.indexedDB?.progress) : ''}
-              </td>
-              <td>{benchmarkResults.indexedDB?.mean ? formatMilliseconds(benchmarkResults.indexedDB?.mean) : ''}</td>
-              <td style={{ textAlign: 'left' }}>
-                {benchmarkResults.indexedDB?.mean ? formatRate(benchmarkResults.indexedDB?.mean) : ''}
-              </td>
-            </tr>
-            <tr>
-              <th>OPFS</th>
-            </tr>
+            {Object.keys(dbs).map(name => (
+              <Fragment key={name}>
+                <BenchmarkResultRow name={name} result={benchmarkResults[name]} />
+                <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+              </Fragment>
+            ))}
           </tbody>
         </table>
 
