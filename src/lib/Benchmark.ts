@@ -39,9 +39,9 @@ const Benchmark = ({
   /** Total number of iterations to run in each case. */
   iterations?: number
   /** Global setup called once at the start of run. */
-  setup?: () => void
+  setup?: () => Promise<void>
   /** Global teardown called once at the end of run. */
-  teardown?: () => void
+  teardown?: () => Promise<void>
 } = {}) => {
   const cases: BenchmarkCase[] = []
   let totalms = 0
@@ -65,7 +65,7 @@ const Benchmark = ({
 
     for (let i = 0; i < cases.length; i++) {
       const { name, f, setup, teardown } = cases[i]
-      setup?.()
+      await setup?.()
       for (let j = 0; j < iterations; j++) {
         if (abort) {
           await teardown?.()
@@ -81,7 +81,7 @@ const Benchmark = ({
         totalms += ms
         iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
       }
-      teardown?.()
+      await teardown?.()
       cycle?.(name, { mean: totalms / iterations })
     }
 

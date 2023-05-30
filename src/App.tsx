@@ -20,7 +20,7 @@ const formatPercentage = (n: number) => (n * 100).toFixed(0) + '%'
 
 /** Formats milliseconds. */
 const formatMilliseconds = (ms: number) =>
-  ms ? `${numberWithCommas(ms)} ms — ${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '0'
+  ms ? `${numberWithCommas(ms)} ms — ${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '0 ms'
 
 const dbs = { localStorage, indexedDB }
 
@@ -86,8 +86,10 @@ function App() {
           progress.cancel()
           setBenchmarkResult(name as keyof typeof dbs, formatMilliseconds(mean))
         },
+        setup: clearDbs,
+        teardown: clearDbs,
       }),
-    [],
+    [iterations],
   )
   const run = async () => {
     benchmark.cancel()
@@ -99,9 +101,16 @@ function App() {
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
-      benchmark.add(name, async () => {
-        await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
-      })
+      benchmark.add(
+        name,
+        async () => {
+          await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
+        },
+        {
+          setup: db.clear,
+          teardown: db.clear,
+        },
+      )
     }
 
     await benchmark.run()
