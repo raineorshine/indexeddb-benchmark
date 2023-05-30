@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, memo } from 'react'
 import throttle from 'lodash.throttle'
 import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
@@ -10,8 +10,12 @@ interface BenchmarkResult {
   progress?: number
 }
 
+type DataType = 'String(100)' | 'Uint8Array(100)'
+
 // throttle rate for re-rendering progress %
 const PROGRESS_THROTTLE = 400
+
+const DEFAULT_DATA: DataType = 'String(100)'
 
 // number of iterations per benchmark case
 const DEFAULT_ITERATIONS = 100
@@ -53,6 +57,93 @@ interface Form {
   iterations?: string
   prefill?: string
 }
+
+const FormRow = memo(function FormRow({
+  defaultValue,
+  description,
+  label,
+  set,
+  type = 'number',
+  options,
+}: {
+  defaultValue?: string
+  description: string
+  label: string
+  options?: string[]
+  set: (value: string) => void
+  type?: 'number' | 'radio'
+}) {
+  const [selected, setSelected] = useState<string | undefined>(options?.[0])
+  const [value, setValue] = useState<string>(defaultValue || '')
+
+  return (
+    <>
+      <tr>
+        <td style={{ width: '25%', maxWidth: '12em', verticalAlign: 'top' }}>
+          <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
+            {label}:
+          </span>
+        </td>
+        <td style={{ textAlign: 'left' }}>
+          {type === 'number' ? (
+            <input
+              type='number'
+              onChange={(e: any) => {
+                const value = parseInt(e.target.value, 10)
+                if (isNaN(value)) {
+                  return
+                }
+                set(e.target.value)
+                setValue(e.target.value)
+              }}
+              style={{
+                width: '5em',
+                padding: '0.25em 0.5em',
+                textAlign: 'right',
+              }}
+              value={value}
+            />
+          ) : (
+            <>
+              {options?.map(option => (
+                <label key={option} style={{ display: 'block' }}>
+                  <input
+                    type='radio'
+                    name={label}
+                    checked={option === selected}
+                    onChange={e => {
+                      if (e.target.value) {
+                        setSelected(option)
+                        set(option)
+                        setValue(option)
+                      }
+                    }}
+                  />{' '}
+                  {option}
+                </label>
+              ))}
+            </>
+          )}
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={2}>
+          <p
+            style={{
+              color: 'gray',
+              margin: '0.5em 1em 1em',
+              marginTop: type === 'radio' ? 0 : '0.5em',
+              maxWidth: '16em',
+              textAlign: 'left',
+            }}
+          >
+            {description}
+          </p>
+        </td>
+      </tr>
+    </>
+  )
+})
 
 /** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkResult }) {
@@ -99,6 +190,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
 function App() {
   // benchmark config
   const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
+  const [data, setData] = useState<string>(DEFAULT_DATA)
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
   const [running, setRunning] = useState<boolean>(false)
 
@@ -201,7 +293,16 @@ function App() {
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
       const set = async () => {
-        await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
+        const value =
+          data === 'String(100)'
+            ? Math.random().toFixed(100 - 2)
+            : data === 'Uint8Array(100)'
+            ? new Uint8Array(100)
+            : null
+        if (value === null) {
+          throw new Error('Unsupported data type: ' + data)
+        }
+        await db.set(Math.random().toFixed(10), value)
       }
 
       // normal
@@ -241,54 +342,6 @@ function App() {
     setRunning(false)
   }
 
-  function FormRow({
-    description,
-    label,
-    value,
-    set,
-  }: {
-    description: string
-    label: string
-    value: string
-    set: (value: string) => void
-  }) {
-    return (
-      <>
-        <tr>
-          <td style={{ width: '25%', maxWidth: '12em' }}>
-            <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
-              {label}:
-            </span>
-          </td>
-          <td style={{ textAlign: 'left' }}>
-            <input
-              type='number'
-              value={value}
-              onChange={e => {
-                const value = parseInt(e.target.value, 10)
-                if (isNaN(value)) {
-                  setError(label.toLowerCase() as any)
-                  return
-                }
-                set(e.target.value)
-              }}
-              style={{
-                width: '5em',
-                padding: '0.25em 0.5em',
-                textAlign: 'right',
-              }}
-            />
-          </td>
-        </tr>
-        <tr>
-          <td colSpan={2}>
-            <p style={{ color: 'gray', margin: '0.5em 1em 1em', maxWidth: '16em', textAlign: 'left' }}>{description}</p>
-          </td>
-        </tr>
-      </>
-    )
-  }
-
   return (
     <div
       className='App'
@@ -309,16 +362,24 @@ function App() {
         <table style={{ marginLeft: '3em', width: '100%' }}>
           <tbody>
             <FormRow
-              label='Prefill'
-              description='Number of insertions to execute before starting measurements.'
-              value={prefill.toString()}
-              set={value => setPrefill(parseInt(value, 10))}
+              defaultValue={DEFAULT_DATA}
+              description='Type of data to insert each iteration.'
+              label='Data'
+              options={useMemo(() => ['String(100)', 'Uint8Array(100)'], [])}
+              set={useCallback(value => setData(value), [])}
+              type='radio'
             />
             <FormRow
-              label='Iterations'
+              defaultValue={DEFAULT_PREFILL.toString()}
+              description='Number of insertions to execute before starting measurements.'
+              label='Prefill'
+              set={useCallback(value => setPrefill(parseInt(value, 10)), [])}
+            />
+            <FormRow
+              defaultValue={DEFAULT_ITERATIONS.toString()}
               description='Number of iterations to measure for each case.'
-              value={iterations.toString()}
-              set={value => setIterations(parseInt(value, 10))}
+              label='Iterations'
+              set={useCallback((value: string) => setIterations(parseInt(value, 10)), [])}
             />
           </tbody>
         </table>

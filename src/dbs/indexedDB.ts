@@ -4,6 +4,7 @@ const dbname = 'test'
 let dbversion = 1
 
 const runner: Database = {
+  /** Clears all databases. */
   clear: async (): Promise<void> => {
     dbversion = 1
     const dbs = await indexedDB.databases()
@@ -14,6 +15,8 @@ const runner: Database = {
       }
     }
   },
+
+  /** TODO */
   get: (key: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
@@ -31,22 +34,24 @@ const runner: Database = {
       }
     })
   },
+
+  /** Sets a value in a new random object store. */
   set: async (key: string, value: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const storeName = Math.random()
+      const storeName = Math.random().toString()
       const openRequest = indexedDB.open(dbname, dbversion++)
       openRequest.onerror = console.error
       openRequest.onupgradeneeded = (e: any) => {
-        const db = e.target.result
+        const db: IDBDatabase = e.target.result
         db.createObjectStore(storeName)
       }
       openRequest.onsuccess = (e: any) => {
-        const db = e.target.result
+        const db: IDBDatabase = e.target.result
         const tx = db.transaction(storeName, 'readwrite')
         const store = tx.objectStore(storeName)
 
         // add
-        const addRequest = store.add(Math.random(), Math.random())
+        const addRequest = store.add(key, value)
         addRequest.onerror = console.error
         addRequest.onsuccess = () => {
           // getAll
@@ -54,7 +59,7 @@ const runner: Database = {
           getRequest.onerror = console.error
           getRequest.onsuccess = () => {
             db.close()
-            resolve(getRequest.result.length)
+            resolve()
           }
         }
       }
