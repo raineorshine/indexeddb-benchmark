@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import throttle from 'lodash.throttle'
-import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
 import Benchmark from './lib/Benchmark'
 
@@ -10,12 +9,12 @@ interface BenchmarkResult {
   progress?: number
 }
 
-type DataType = 'String(100)' | 'Uint8Array(100)'
+type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
 // throttle rate for re-rendering progress %
 const PROGRESS_THROTTLE = 400
 
-const DEFAULT_DATA: DataType = 'String(100)'
+const DEFAULT_DATA: DataType = 'String(1000)'
 
 // number of iterations per benchmark case
 const DEFAULT_ITERATIONS = 100
@@ -23,7 +22,7 @@ const DEFAULT_ITERATIONS = 100
 // number of iterations per benchmark case
 const DEFAULT_PREFILL = 3000
 
-const dbs = { localStorage, indexedDB }
+const dbs = { indexedDB }
 
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
@@ -43,6 +42,7 @@ const formatMilliseconds = (ms: number) => (ms ? `${numberWithCommas(ms)} ms` : 
 /** Formats milliseconds in terms of iterations per second. */
 const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '')
 
+/** Clears all databases. */
 const clearDbs = async (): Promise<void> => {
   const dbEntries = Object.entries(dbs)
   for (let i = 0; i < dbEntries.length; i++) {
@@ -299,12 +299,14 @@ function App() {
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
+
+      /** Inserts a value in the database based on the selected DataType. */
       const set = async () => {
         const value =
-          data === 'String(100)'
-            ? Math.random().toFixed(100 - 2)
-            : data === 'Uint8Array(100)'
-            ? new Uint8Array(100)
+          data === 'String(1000)'
+            ? new Array(1000).fill(0).join('')
+            : data === 'Uint8Array(1000)'
+            ? new Uint8Array(1000)
             : null
         if (value === null) {
           throw new Error('Unsupported data type: ' + data)
@@ -365,7 +367,7 @@ function App() {
     >
       <h1>OPFS Benchmark</h1>
       <p>
-        <b>OPFS</b> vs <b>IndexedDB</b> vs <b>localStorage</b> performance
+        <b>OPFS</b> vs <b>IndexedDB</b> performance
       </p>
 
       <section style={{ margin: '2em' }}>
@@ -376,7 +378,7 @@ function App() {
               defaultValue={DEFAULT_DATA}
               description='Type of data to insert each iteration.'
               label='Data'
-              options={useMemo(() => ['String(100)', 'Uint8Array(100)'], [])}
+              options={useMemo(() => ['String(1000)', 'Uint8Array(1000)'], [])}
               set={useCallback(value => setData(value), [])}
               type='radio'
             />
