@@ -15,6 +15,8 @@ const DEFAULT_ITERATIONS = 2000
 // number of iterations per benchmark case
 const DEFAULT_PREFILL = 1000
 
+const dbs = { localStorage, indexedDB }
+
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
   const parts = n.toString().split('.')
@@ -32,8 +34,6 @@ const formatMilliseconds = (ms: number) => (ms ? `${numberWithCommas(ms)} ms` : 
 
 /** Formats milliseconds in terms of iterations per second. */
 const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '')
-
-const dbs = { localStorage, indexedDB }
 
 const clearDbs = async (): Promise<void> => {
   const dbEntries = Object.entries(dbs)
@@ -190,7 +190,9 @@ function App() {
       <section style={{ margin: '2em' }}>
         <h2>Config</h2>
         <p>
-          Prefill:{' '}
+          <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
+            Prefill:
+          </span>
           <input
             type='number'
             value={prefill}
@@ -210,7 +212,9 @@ function App() {
           />
         </p>
         <p>
-          Iterations:{' '}
+          <span style={{ minWidth: '6em', display: 'inline-block', marginRight: '0.5em', textAlign: 'right' }}>
+            Iterations:
+          </span>
           <input
             type='number'
             value={iterations}
