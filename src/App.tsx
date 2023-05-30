@@ -372,30 +372,32 @@ function App() {
 
       <section style={{ margin: '2em' }}>
         <h2 style={{ marginBottom: '1.2em' }}>Config</h2>
-        <table style={{ marginLeft: '3em', width: '100%' }}>
-          <tbody>
-            <FormRow
-              defaultValue={DEFAULT_DATA}
-              description='Type of data to insert each iteration.'
-              label='Data'
-              options={useMemo(() => ['String(1000)', 'Uint8Array(1000)'], [])}
-              set={useCallback(value => setData(value), [])}
-              type='radio'
-            />
-            <FormRow
-              defaultValue={DEFAULT_PREFILL.toString()}
-              description='Number of insertions to execute before starting measurements.'
-              label='Prefill'
-              set={useCallback(value => setPrefill(parseInt(value, 10)), [])}
-            />
-            <FormRow
-              defaultValue={DEFAULT_ITERATIONS.toString()}
-              description='Number of iterations to measure for each case.'
-              label='Iterations'
-              set={useCallback((value: string) => setIterations(parseInt(value, 10)), [])}
-            />
-          </tbody>
-        </table>
+        <div style={{ margin: '0 auto' }}>
+          <table style={{ marginLeft: '3.6em', width: '100%' }}>
+            <tbody>
+              <FormRow
+                defaultValue={DEFAULT_DATA}
+                description='Type of data to insert each iteration.'
+                label='Data'
+                options={useMemo(() => ['String(1000)', 'Uint8Array(1000)'], [])}
+                set={useCallback(value => setData(value), [])}
+                type='radio'
+              />
+              <FormRow
+                defaultValue={DEFAULT_PREFILL.toString()}
+                description='Number of insertions to execute before starting measurements.'
+                label='Prefill'
+                set={useCallback(value => setPrefill(parseInt(value, 10)), [])}
+              />
+              <FormRow
+                defaultValue={DEFAULT_ITERATIONS.toString()}
+                description='Number of iterations to measure for each case.'
+                label='Iterations'
+                set={useCallback((value: string) => setIterations(parseInt(value, 10)), [])}
+              />
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section style={{ margin: '2em' }}>
