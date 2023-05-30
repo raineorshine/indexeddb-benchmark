@@ -74,9 +74,18 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
       </td>
       <td>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
       <td
+        title={
+          result?.mean && result.mean <= 1
+            ? '> 1,000/sec'
+            : result?.mean && result.mean > 40
+            ? '< 25/sec'
+            : result?.mean
+            ? '25–1,000/sec'
+            : undefined
+        }
         style={{
           color:
-            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 25 ? 'tomato' : undefined,
+            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 40 ? 'tomato' : undefined,
           textAlign: 'left',
         }}
       >
