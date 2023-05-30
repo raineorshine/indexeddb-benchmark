@@ -6,8 +6,12 @@ import Benchmark from './lib/Benchmark'
 
 interface BenchmarkResult {
   mean?: number
+  prefill?: boolean
   progress?: number
 }
+
+// throttle rate for re-rendering progress %
+const PROGRESS_THROTTLE = 400
 
 // number of iterations per benchmark case
 const DEFAULT_ITERATIONS = 2000
@@ -50,6 +54,7 @@ interface Form {
   prefill?: string
 }
 
+/** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkResult }) {
   return (
     <tr>
@@ -61,9 +66,9 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
           color: result?.progress === 1 ? 'gray' : undefined,
         }}
       >
-        {result?.progress ? formatPercentage(result?.progress) : ''}
+        {result?.prefill ? '...' : result?.progress != null ? formatPercentage(result?.progress) : ''}
       </td>
-      <td>{result?.mean ? formatMilliseconds(result?.mean) : ''}</td>
+      <td>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
       <td style={{ textAlign: 'left' }}>{result?.mean ? formatRate(result?.mean) : ''}</td>
     </tr>
   )
@@ -98,10 +103,14 @@ function App() {
     setBenchmarkResults({})
   }
 
-  const setBenchmarkResult = (name: keyof typeof dbs, { mean, progress }: { mean?: number; progress?: number }) => {
-    setBenchmarkResults(results => ({
-      ...results,
-      [name]: { mean, progress },
+  /** Sets a benchmark result for a specific case. Only overwrites given properties. */
+  const setBenchmarkResult = (name: string, result: Partial<BenchmarkResult>) => {
+    setBenchmarkResults(resultsOld => ({
+      ...resultsOld,
+      [name]: {
+        ...resultsOld[name],
+        ...result,
+      },
     }))
   }
 
@@ -109,9 +118,11 @@ function App() {
   const progress = useCallback(
     throttle(
       (name: string, { i, ms }: { i: number; ms: number }) => {
-        setBenchmarkResult(name as keyof typeof dbs, { progress: i / iterations })
+        setBenchmarkResult(name, {
+          progress: i / iterations,
+        })
       },
-      16.666,
+      PROGRESS_THROTTLE,
       { leading: true, trailing: false },
     ),
     [iterations],
@@ -123,8 +134,12 @@ function App() {
         iterations,
         iteration: progress,
         cycle: (name, { mean }) => {
-          progress.cancel()
-          setBenchmarkResult(name as keyof typeof dbs, { mean, progress: 1 })
+          progress.flush()
+          setBenchmarkResult(name, {
+            mean,
+            prefill: false,
+            progress: 1,
+          })
         },
         setup: clearDbs,
         teardown: clearDbs,
@@ -152,17 +167,31 @@ function App() {
       const set = async () => {
         await db.set(Math.random().toFixed(10), Math.random().toFixed(10))
       }
+
+      // normal
       benchmark.add(name, set, {
-        setup: db.clear,
+        setup: async name => {
+          await clearDbs()
+          setBenchmarkResult(name, {
+            progress: 0,
+          })
+        },
         teardown: db.clear,
       })
+
       // prefill
       benchmark.add(prefillName(name), set, {
         setup: async () => {
+          setBenchmarkResult(prefillName(name), {
+            prefill: true,
+          })
           await db.clear()
           for (let i = 0; i < prefill; i++) {
             await set()
           }
+          setBenchmarkResult(name, {
+            prefill: false,
+          })
         },
         teardown: db.clear,
       })

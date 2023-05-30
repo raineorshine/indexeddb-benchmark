@@ -4,9 +4,9 @@ interface BenchmarkCase {
   /** The synchronous or asynchronous function that will be executed and measured. */
   f: () => Promise<void> | void
   /** Callback invoked once before any iterations of a case. */
-  setup?: () => Promise<void>
+  setup?: (name: string) => Promise<void>
   /** Callback invoked once after all iterations of a case have run. */
-  teardown?: () => Promise<void>
+  teardown?: (name: string) => Promise<void>
 }
 
 const Benchmark = ({
@@ -72,17 +72,17 @@ const Benchmark = ({
 
     for (let i = 0; i < cases.length; i++) {
       const { name, f, setup, teardown } = cases[i]
-      await setup?.()
+      await setup?.(name)
       for (let j = 0; j < iterations; j++) {
         if (abort) {
-          await teardown?.()
+          await teardown?.(name)
           reset()
           return
         }
         const start = performance.now()
         await Promise.resolve(f())
         if (abort) {
-          await teardown?.()
+          await teardown?.(name)
           reset()
           return
         }
@@ -91,7 +91,7 @@ const Benchmark = ({
         totalms += ms
         iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
       }
-      await teardown?.()
+      await teardown?.(name)
       cycle?.(name, { mean: totalms / iterations })
     }
 
@@ -115,7 +115,7 @@ const Benchmark = ({
     add: (
       name: string,
       f: () => Promise<void> | void,
-      { setup, teardown }: { setup?: () => Promise<void>; teardown?: () => Promise<void> } = {},
+      { setup, teardown }: { setup?: (name: string) => Promise<void>; teardown?: (name: string) => Promise<void> } = {},
     ) => {
       cases.push({ name, f, setup, teardown })
     },
