@@ -175,21 +175,23 @@ function App() {
       })
 
       // prefill
-      benchmark.add(prefillName(name), set, {
-        setup: async () => {
-          setBenchmarkResult(prefillName(name), { prefill: 0 })
-          await db.clear()
-          for (let i = 0; i < prefill; i++) {
-            if (!running.current) return
-            await set()
-            if (!running.current) return
-            prefillProgress(prefillName(name), { i })
-          }
-          prefillProgress.cancel()
-          setBenchmarkResult(prefillName(name), { prefill: 1 })
-        },
-        teardown: db.clear,
-      })
+      if (prefill > 0) {
+        benchmark.add(prefillName(name), set, {
+          setup: async () => {
+            setBenchmarkResult(prefillName(name), { prefill: 0 })
+            await db.clear()
+            for (let i = 0; i < prefill; i++) {
+              if (!running.current) return
+              await set()
+              if (!running.current) return
+              prefillProgress(prefillName(name), { i })
+            }
+            prefillProgress.cancel()
+            setBenchmarkResult(prefillName(name), { prefill: 1 })
+          },
+          teardown: db.clear,
+        })
+      }
     }
 
     if (running.current) {
@@ -250,7 +252,9 @@ function App() {
             {Object.keys(dbs).map(name => (
               <Fragment key={name}>
                 <BenchmarkResultRow name={name} result={benchmarkResults[name]} />
-                <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+                {prefill > 0 && (
+                  <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+                )}
               </Fragment>
             ))}
           </tbody>
