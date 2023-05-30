@@ -168,6 +168,7 @@ function App() {
       benchmark.add(name, set, {
         setup: async name => {
           await clearDbs()
+          progress.cancel()
           setBenchmarkResult(name, { progress: 0 })
         },
         teardown: db.clear,
@@ -184,6 +185,7 @@ function App() {
             if (!running.current) return
             prefillProgress(prefillName(name), { i })
           }
+          prefillProgress.cancel()
           setBenchmarkResult(prefillName(name), { prefill: 1 })
         },
         teardown: db.clear,
