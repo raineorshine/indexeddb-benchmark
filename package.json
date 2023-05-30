@@ -1,5 +1,6 @@
 {
   "name": "opfs-benchmark",
+  "description": "A benchmark that tests the performance of the new OPFS (Origin Private File System) vs localStorage and IndexedDB.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
