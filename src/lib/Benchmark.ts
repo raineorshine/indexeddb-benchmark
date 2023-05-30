@@ -52,6 +52,13 @@ const Benchmark = ({
   // track running for cancel method
   let running = false
 
+  /** Resets the benchmark running state. */
+  const reset = () => {
+    abort = false
+    running = false
+    totalms = 0
+  }
+
   const run = async () => {
     // poll if aborting
     if (running) {
@@ -69,13 +76,16 @@ const Benchmark = ({
       for (let j = 0; j < iterations; j++) {
         if (abort) {
           await teardown?.()
-          abort = false
-          running = false
-          totalms = 0
+          reset()
           return
         }
         const start = performance.now()
         await Promise.resolve(f())
+        if (abort) {
+          await teardown?.()
+          reset()
+          return
+        }
         const end = performance.now()
         const ms = end - start
         totalms += ms
@@ -86,9 +96,7 @@ const Benchmark = ({
     }
 
     await teardown?.()
-    abort = false
-    running = false
-    totalms = 0
+    reset()
   }
 
   return {
