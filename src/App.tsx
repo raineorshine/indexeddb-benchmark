@@ -318,9 +318,7 @@ function App() {
       benchmark.add(name, set, {
         setup: async name => {
           await clearDbs()
-          setBenchmarkResult(name, {
-            progress: 0,
-          })
+          setBenchmarkResult(name, { progress: 0 })
         },
         teardown: db.clear,
       })
@@ -328,22 +326,16 @@ function App() {
       // prefill
       benchmark.add(prefillName(name), set, {
         setup: async () => {
-          setBenchmarkResult(prefillName(name), {
-            prefill: 0,
-          })
+          setBenchmarkResult(prefillName(name), { prefill: 0 })
           await db.clear()
           for (let i = 0; i < prefill; i++) {
             if (!running.current) return
             await set()
             if (!running.current) return
             prefillProgress(prefillName(name), { i })
-            setBenchmarkResult(prefillName(name), {
-              prefill: (i + 1) / prefill,
-            })
+            setBenchmarkResult(prefillName(name), { prefill: (i + 1) / prefill })
           }
-          setBenchmarkResult(prefillName(name), {
-            prefill: 1,
-          })
+          setBenchmarkResult(prefillName(name), { prefill: 1 })
         },
         teardown: db.clear,
       })
@@ -380,7 +372,7 @@ function App() {
                 description='Type of data to insert each iteration.'
                 label='Data'
                 options={useMemo(() => ['String(1000)', 'Uint8Array(1000)'], [])}
-                set={useCallback(value => setData(value), [])}
+                set={setData}
                 type='radio'
               />
               <FormRow
