@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, memo } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
 import throttle from 'lodash.throttle'
 import localStorage from './dbs/localStorage'
 import indexedDB from './dbs/indexedDB'
@@ -192,7 +192,7 @@ function App() {
   const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
   const [data, setData] = useState<string>(DEFAULT_DATA)
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
-  const [running, setRunning] = useState<boolean>(false)
+  const running = useRef<boolean>(false)
 
   /** Generate a name for a prefill case. */
   const prefillName = (name: string) => `${name} (prefilled)`
@@ -232,6 +232,7 @@ function App() {
   const progress = useCallback(
     throttle(
       (name: string, { i }: { i: number }) => {
+        if (!running.current) return
         setBenchmarkResult(name, {
           progress: (i + 1) / iterations,
         })
@@ -246,6 +247,7 @@ function App() {
   const prefillProgress = useCallback(
     throttle(
       (name: string, { i }: { i: number }) => {
+        if (!running.current) return
         setBenchmarkResult(name, {
           prefill: (i + 1) / prefill,
         })
@@ -262,7 +264,8 @@ function App() {
         iterations,
         iteration: progress,
         cycle: (name, { mean }) => {
-          progress.flush()
+          progress.cancel()
+          prefillProgress.cancel()
           setBenchmarkResult(name, {
             mean,
             prefill: 1,
@@ -275,18 +278,22 @@ function App() {
     [iterations],
   )
 
-  const clear = async () => {
+  const cancel = async () => {
     benchmark.cancel()
     benchmark.clear()
     progress.cancel()
+    prefillProgress.cancel()
     clearBenchmarkResults()
     await clearDbs()
-    setRunning(false)
+    running.current = false
   }
 
   const run = async () => {
-    await clear()
-    setRunning(true)
+    if (running.current) return
+
+    benchmark.clear()
+    clearBenchmarkResults()
+    running.current = true
 
     // add a case for each db to benchmark
     const dbEntries = Object.entries(dbs)
@@ -324,13 +331,15 @@ function App() {
           })
           await db.clear()
           for (let i = 0; i < prefill; i++) {
+            if (!running.current) return
             await set()
+            if (!running.current) return
             prefillProgress(prefillName(name), { i })
             setBenchmarkResult(prefillName(name), {
               prefill: (i + 1) / prefill,
             })
           }
-          setBenchmarkResult(name, {
+          setBenchmarkResult(prefillName(name), {
             prefill: 1,
           })
         },
@@ -338,8 +347,10 @@ function App() {
       })
     }
 
-    await benchmark.run()
-    setRunning(false)
+    if (running.current) {
+      await benchmark.run()
+    }
+    running.current = false
   }
 
   return (
@@ -403,11 +414,11 @@ function App() {
             Run benchmark
           </button>
           <button
-            onClick={clear}
+            onClick={cancel}
             disabled={Object.keys(benchmarkResults).length === 0}
             style={{ backgroundColor: '#1a1a1a', margin: '0.5em' }}
           >
-            {running ? 'Cancel' : 'Clear'}
+            {running.current ? 'Cancel' : 'Clear'}
           </button>
         </p>
       </section>

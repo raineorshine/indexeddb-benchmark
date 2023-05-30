@@ -63,47 +63,38 @@ const Benchmark = ({
   const runCase = async ({ name, setup, teardown, f }: BenchmarkCase): Promise<void> => {
     await setup?.(name)
     if (abort) {
-      await teardown?.(name)
-      reset()
-      return
+      return teardown?.(name)
     }
     for (let j = 0; j < iterations; j++) {
-      if (abort) {
+      if (abort || !running) {
         await teardown?.(name)
         reset()
         return
       }
       const start = performance.now()
       await Promise.resolve(f())
-      if (abort) {
-        await teardown?.(name)
-        reset()
-        return
-      }
+      if (abort || !running) break
       const end = performance.now()
       const ms = end - start
       totalms += ms
       iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
     }
+    if (running && !abort) {
+      cycle?.(name, { mean: totalms / iterations })
+    }
     await teardown?.(name)
-    cycle?.(name, { mean: totalms / iterations })
   }
 
   const run = async () => {
-    // poll if aborting
-    if (running) {
-      if (!abort) throw new Error('Cancel before running again.')
-      setTimeout(run, 16.666)
-      return
-    }
+    if (running) return
 
     running = true
     await setup?.()
 
     for (let i = 0; i < cases.length; i++) {
       const { name, f, setup, teardown } = cases[i]
+      if (abort || !running) break
       await runCase(cases[i])
-      if (abort) return
     }
 
     await teardown?.()
