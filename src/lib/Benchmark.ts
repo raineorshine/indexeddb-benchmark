@@ -59,6 +59,31 @@ const Benchmark = ({
     totalms = 0
   }
 
+  /** Run all the iterations for a single case. */
+  const runCase = async ({ name, setup, teardown, f }: BenchmarkCase): Promise<void> => {
+    await setup?.(name)
+    for (let j = 0; j < iterations; j++) {
+      if (abort) {
+        await teardown?.(name)
+        reset()
+        return
+      }
+      const start = performance.now()
+      await Promise.resolve(f())
+      if (abort) {
+        await teardown?.(name)
+        reset()
+        return
+      }
+      const end = performance.now()
+      const ms = end - start
+      totalms += ms
+      iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
+    }
+    await teardown?.(name)
+    cycle?.(name, { mean: totalms / iterations })
+  }
+
   const run = async () => {
     // poll if aborting
     if (running) {
@@ -72,27 +97,7 @@ const Benchmark = ({
 
     for (let i = 0; i < cases.length; i++) {
       const { name, f, setup, teardown } = cases[i]
-      await setup?.(name)
-      for (let j = 0; j < iterations; j++) {
-        if (abort) {
-          await teardown?.(name)
-          reset()
-          return
-        }
-        const start = performance.now()
-        await Promise.resolve(f())
-        if (abort) {
-          await teardown?.(name)
-          reset()
-          return
-        }
-        const end = performance.now()
-        const ms = end - start
-        totalms += ms
-        iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
-      }
-      await teardown?.(name)
-      cycle?.(name, { mean: totalms / iterations })
+      await runCase(cases[i])
     }
 
     await teardown?.()
@@ -100,7 +105,7 @@ const Benchmark = ({
   }
 
   return {
-    /** Cancels an in progress run. */
+    /** Cancels an in progress run. Subsequent calls to run will wait for aborted run to wind down. */
     cancel: (): void => {
       if (!running) return
       abort = true
@@ -109,6 +114,7 @@ const Benchmark = ({
     /** Clears all cases. */
     clear: () => {
       cases.length = 0
+      reset()
     },
 
     /** Adds a new case. */
