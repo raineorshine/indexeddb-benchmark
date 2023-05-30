@@ -9,7 +9,7 @@ import BenchmarkResult from './types/BenchmarkResult'
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
 // throttle rate for re-rendering progress %
-const PROGRESS_THROTTLE = 400
+const PROGRESS_THROTTLE = 250
 
 const DEFAULT_DATA: DataType = 'String(1000)'
 
@@ -183,7 +183,6 @@ function App() {
             await set()
             if (!running.current) return
             prefillProgress(prefillName(name), { i })
-            setBenchmarkResult(prefillName(name), { prefill: (i + 1) / prefill })
           }
           setBenchmarkResult(prefillName(name), { prefill: 1 })
         },
