@@ -46,7 +46,58 @@ const Benchmark = ({
   const cases: BenchmarkCase[] = []
   let totalms = 0
 
+  // abort current run
+  let abort = false
+
+  // track running for cancel method
+  let running = false
+
+  const run = async () => {
+    // poll if aborting
+    if (running) {
+      if (!abort) throw new Error('Cancel before running again.')
+      setTimeout(run, 16.666)
+      return
+    }
+
+    running = true
+    await setup?.()
+
+    for (let i = 0; i < cases.length; i++) {
+      const { name, f, setup, teardown } = cases[i]
+      setup?.()
+      for (let j = 0; j < iterations; j++) {
+        if (abort) {
+          await teardown?.()
+          abort = false
+          running = false
+          totalms = 0
+          return
+        }
+        const start = performance.now()
+        await Promise.resolve(f())
+        const end = performance.now()
+        const ms = end - start
+        totalms += ms
+        iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
+      }
+      teardown?.()
+      cycle?.(name, { mean: totalms / iterations })
+    }
+
+    await teardown?.()
+    abort = false
+    running = false
+    totalms = 0
+  }
+
   return {
+    /** Cancels an in progress run. */
+    cancel: (): void => {
+      if (!running) return
+      abort = true
+    },
+
     /** Clears all cases. */
     clear: () => {
       cases.length = 0
@@ -62,27 +113,7 @@ const Benchmark = ({
     },
 
     /** Runs all cases and measures performance. */
-    run: async () => {
-      await setup?.()
-
-      for (let i = 0; i < cases.length; i++) {
-        const { name, f, setup, teardown } = cases[i]
-        setup?.()
-        for (let j = 0; j < iterations; j++) {
-          const start = performance.now()
-          await Promise.resolve(f())
-          const end = performance.now()
-          const ms = end - start
-          totalms += ms
-          iteration?.(name, { i: j, ms, mean: totalms / (j + 1) })
-        }
-        teardown?.()
-        cycle?.(name, { mean: totalms / iterations })
-      }
-
-      await teardown?.()
-      totalms = 0
-    },
+    run,
   }
 }
 

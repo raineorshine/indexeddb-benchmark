@@ -90,6 +90,7 @@ function App() {
     [],
   )
   const run = async () => {
+    benchmark.cancel()
     benchmark.clear()
     clearBenchmarkResults()
     await clearDbs()
