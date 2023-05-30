@@ -6,7 +6,7 @@ import Benchmark from './lib/Benchmark'
 
 interface BenchmarkResult {
   mean?: number
-  prefill?: boolean
+  prefill?: number
   progress?: number
 }
 
@@ -14,10 +14,10 @@ interface BenchmarkResult {
 const PROGRESS_THROTTLE = 400
 
 // number of iterations per benchmark case
-const DEFAULT_ITERATIONS = 2000
+const DEFAULT_ITERATIONS = 100
 
 // number of iterations per benchmark case
-const DEFAULT_PREFILL = 1000
+const DEFAULT_PREFILL = 3000
 
 const dbs = { localStorage, indexedDB }
 
@@ -63,13 +63,25 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
         style={{
           minWidth: '2em',
           paddingRight: '0.5em',
-          color: result?.progress === 1 ? 'gray' : undefined,
+          color: result?.progress === 1 ? 'gray' : result?.prefill && result.prefill < 1 ? 'goldenrod' : undefined,
         }}
       >
-        {result?.prefill ? '...' : result?.progress != null ? formatPercentage(result?.progress) : ''}
+        {result?.progress != null
+          ? formatPercentage(result.progress)
+          : result?.prefill
+          ? formatPercentage(result.prefill)
+          : ''}
       </td>
       <td>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
-      <td style={{ textAlign: 'left' }}>{result?.mean ? formatRate(result?.mean) : ''}</td>
+      <td
+        style={{
+          color:
+            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 25 ? 'tomato' : undefined,
+          textAlign: 'left',
+        }}
+      >
+        {result?.mean ? formatRate(result?.mean) : ''}
+      </td>
     </tr>
   )
 }
@@ -117,9 +129,23 @@ function App() {
   // throttled progress updater
   const progress = useCallback(
     throttle(
-      (name: string, { i, ms }: { i: number; ms: number }) => {
+      (name: string, { i }: { i: number }) => {
         setBenchmarkResult(name, {
-          progress: i / iterations,
+          progress: (i + 1) / iterations,
+        })
+      },
+      PROGRESS_THROTTLE,
+      { leading: true, trailing: false },
+    ),
+    [iterations],
+  )
+
+  // throttled prefill progress updater
+  const prefillProgress = useCallback(
+    throttle(
+      (name: string, { i }: { i: number }) => {
+        setBenchmarkResult(name, {
+          prefill: (i + 1) / prefill,
         })
       },
       PROGRESS_THROTTLE,
@@ -137,7 +163,7 @@ function App() {
           progress.flush()
           setBenchmarkResult(name, {
             mean,
-            prefill: false,
+            prefill: 1,
             progress: 1,
           })
         },
@@ -183,14 +209,18 @@ function App() {
       benchmark.add(prefillName(name), set, {
         setup: async () => {
           setBenchmarkResult(prefillName(name), {
-            prefill: true,
+            prefill: 0,
           })
           await db.clear()
           for (let i = 0; i < prefill; i++) {
             await set()
+            prefillProgress(prefillName(name), { i })
+            setBenchmarkResult(prefillName(name), {
+              prefill: (i + 1) / prefill,
+            })
           }
           setBenchmarkResult(name, {
-            prefill: false,
+            prefill: 1,
           })
         },
         teardown: db.clear,
