@@ -5,6 +5,7 @@ let dbversion = 1
 
 const runner: Database = {
   clear: async (): Promise<void> => {
+    dbversion = 1
     const dbs = await indexedDB.databases()
     for (let i = 0; i < dbs.length; i++) {
       const name = dbs[i]?.name
