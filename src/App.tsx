@@ -30,8 +30,6 @@ const clearDbs = async (): Promise<void> => {
   }
 }
 
-clearDbs()
-
 interface Form {
   iterations?: string
   prefill?: string
@@ -199,6 +197,10 @@ function App() {
     }
     running.current = false
   }
+
+  useEffect(() => {
+    clearDbs()
+  }, [])
 
   return (
     <div
