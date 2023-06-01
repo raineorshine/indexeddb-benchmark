@@ -12,39 +12,53 @@ const runner: Database = {
       const name = dbs[i]?.name
       if (name) {
         await indexedDB.deleteDatabase(name)
+      } else {
+        console.error('Unable to delete database.', dbs)
       }
     }
   },
 
-  /** TODO */
-  get: (key: string): Promise<string> => {
+  /** Gets a value at a key from a store. */
+  get: (storeName: string, key: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
       openRequest.onerror = console.error
       openRequest.onsuccess = (e: any) => {
         const db: IDBDatabase = e.target.result
-        const tx = db.transaction('updates', 'readonly')
-        const updatesStore = tx.objectStore('updates')
-        const countRequest = updatesStore.count()
-        countRequest.onerror = console.error
-        countRequest.onsuccess = () => {
+        const tx = db.transaction(storeName, 'readonly')
+        const store = tx.objectStore(storeName)
+        const getRequest = store.get(key)
+        getRequest.onerror = console.error
+        getRequest.onsuccess = () => {
           db.close()
-          resolve(countRequest.result.toString())
+          resolve(getRequest.result)
         }
       }
     })
   },
 
-  /** Sets a value in a new random object store. */
-  set: async (key: string, value: string): Promise<void> => {
+  /** Creates a new store. */
+  createStore: async (storeName: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const storeName = Math.random().toString()
       const openRequest = indexedDB.open(dbname, dbversion++)
       openRequest.onerror = console.error
       openRequest.onupgradeneeded = (e: any) => {
         const db: IDBDatabase = e.target.result
         db.createObjectStore(storeName)
       }
+      openRequest.onsuccess = (e: any) => {
+        const db: IDBDatabase = e.target.result
+        db.close()
+        resolve()
+      }
+    })
+  },
+
+  /** Sets a value in a new random object store. */
+  set: async (storeName: string, key: string, value: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const openRequest = indexedDB.open(dbname)
+      openRequest.onerror = console.error
       openRequest.onsuccess = (e: any) => {
         const db: IDBDatabase = e.target.result
         const tx = db.transaction(storeName, 'readwrite')
@@ -54,13 +68,9 @@ const runner: Database = {
         const addRequest = store.add(key, value)
         addRequest.onerror = console.error
         addRequest.onsuccess = () => {
-          // getAll
-          const getRequest = store.getAll()
-          getRequest.onerror = console.error
-          getRequest.onsuccess = () => {
-            db.close()
-            resolve()
-          }
+          const db: IDBDatabase = e.target.result
+          db.close()
+          resolve()
         }
       }
     })

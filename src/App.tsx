@@ -13,10 +13,10 @@ const PROGRESS_THROTTLE = 250
 
 const DEFAULT_DATA: DataType = 'String(1000)'
 
-// number of iterations per benchmark case
+// number of insertions per benchmark case
 const DEFAULT_ITERATIONS = 100
 
-// number of iterations per benchmark case
+// number of insertions to prefill per benchmark case
 const DEFAULT_PREFILL = 3000
 
 const dbs = { indexedDB }
@@ -159,7 +159,10 @@ function App() {
         if (value === null) {
           throw new Error('Unsupported data type: ' + data)
         }
-        await db.set(Math.random().toFixed(10), value)
+        const storeName = Math.random().toFixed(16)
+        const key = Math.random().toFixed(16)
+        await db.createStore(storeName)
+        await db.set(storeName, key, value)
       }
 
       // normal
