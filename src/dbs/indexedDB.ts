@@ -65,7 +65,7 @@ const runner: Database = {
         const store = tx.objectStore(storeName)
 
         // add
-        const addRequest = store.add(key, value)
+        const addRequest = store.add(value, key)
         addRequest.onerror = console.error
         addRequest.onsuccess = () => {
           const db: IDBDatabase = e.target.result
