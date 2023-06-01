@@ -15,7 +15,7 @@ const FormRow = memo(function FormRow({
   set: (value: string) => void
   type?: 'number' | 'radio'
 }) {
-  const [selected, setSelected] = useState<string | undefined>(options?.[0])
+  const [selected, setSelected] = useState<string | undefined>(defaultValue ?? options?.[0])
   const [value, setValue] = useState<string>(defaultValue || '')
 
   return (

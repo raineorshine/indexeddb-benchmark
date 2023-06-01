@@ -11,7 +11,7 @@ type DataType = 'String(1000)' | 'Uint8Array(1000)'
 // throttle rate for re-rendering progress %
 const PROGRESS_THROTTLE = 250
 
-const DEFAULT_DATA: DataType = 'String(1000)'
+const DEFAULT_DATA: DataType = 'Uint8Array(1000)'
 
 // number of insertions per benchmark case
 const DEFAULT_ITERATIONS = 100
