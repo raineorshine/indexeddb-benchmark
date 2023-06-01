@@ -67,12 +67,14 @@ const Benchmark = ({
     }
     for (let j = 0; j < iterations; j++) {
       if (abort || !running) {
-        await teardown?.(name)
         reset()
-        return
+        break
       }
       const start = performance.now()
-      await Promise.resolve(f())
+      const p = f()
+      if (p instanceof Promise) {
+        await p
+      }
       if (abort || !running) break
       const end = performance.now()
       const ms = end - start

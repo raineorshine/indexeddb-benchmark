@@ -8,8 +8,11 @@ import BenchmarkResult from './types/BenchmarkResult'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
-// throttle rate for re-rendering progress %
-const PROGRESS_THROTTLE = 250
+// time to wait between cases
+const DELAY_BETWEEN_CASES = 100
+
+// throttle rate for re-rendering progress percentage
+const PROGRESS_THROTTLE = 33.333
 
 const DEFAULT_DATA: DataType = 'Uint8Array(1000)'
 
@@ -29,6 +32,9 @@ const clearDbs = async (): Promise<void> => {
     await db.clear()
   }
 }
+
+/** Asynchronously waits for a number of milliseconds*/
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 interface Form {
   iterations?: string
@@ -64,8 +70,14 @@ function App() {
     [key: string]: BenchmarkResult
   }>({})
 
-  const clearBenchmarkResults = () => {
+  /** Clears the database, benchmark results, and throttled progress timers. Assumes the benchmark is has already ended or been cancelled. */
+  const clear = async () => {
+    running.current = false
+    progress.cancel()
+    prefillProgress.cancel()
+    benchmark.clear()
     setBenchmarkResults({})
+    await clearDbs()
   }
 
   /** Sets a benchmark result for a specific case. Only overwrites given properties. */
@@ -129,21 +141,16 @@ function App() {
     [iterations],
   )
 
+  /** Cancels the current run and clears the benchmark results. */
   const cancel = async () => {
     benchmark.cancel()
-    benchmark.clear()
-    progress.cancel()
-    prefillProgress.cancel()
-    clearBenchmarkResults()
-    await clearDbs()
-    running.current = false
+    clear()
   }
 
   const run = async () => {
     if (running.current) return
 
-    benchmark.clear()
-    clearBenchmarkResults()
+    await clear()
     running.current = true
 
     // add a case for each db to benchmark
@@ -151,7 +158,7 @@ function App() {
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
 
-      /** Inserts a value in the database based on the selected DataType. */
+      /** Inserts a value of the selected DataType into a new object store. */
       const set = async () => {
         const value =
           data === 'String(1000)'
@@ -168,14 +175,18 @@ function App() {
         await db.set(storeName, key, value)
       }
 
+      /** Clear the database and delay at the end of each case. */
+      const teardown = async () => {
+        await db.clear()
+        await sleep(DELAY_BETWEEN_CASES)
+      }
+
       // normal
       benchmark.add(name, set, {
         setup: async name => {
-          await clearDbs()
-          progress.cancel()
           setBenchmarkResult(name, { progress: 0 })
         },
-        teardown: db.clear,
+        teardown,
       })
 
       // prefill empty
@@ -183,8 +194,9 @@ function App() {
         const caseName = prefillEmptyName(name)
         benchmark.add(caseName, set, {
           setup: async () => {
+            // start prefill progress at 0%
             setBenchmarkResult(caseName, { prefill: 0 })
-            await db.clear()
+
             for (let i = 0; i < prefill; i++) {
               if (!running.current) return
               const storeName = Math.random().toFixed(16)
@@ -192,10 +204,12 @@ function App() {
               if (!running.current) return
               prefillProgress(caseName, { i })
             }
+
+            // end prefill progress to 100%
             prefillProgress.cancel()
             setBenchmarkResult(caseName, { prefill: 1 })
           },
-          teardown: db.clear,
+          teardown,
         })
       }
 
@@ -204,19 +218,21 @@ function App() {
         const caseName = prefillName(name)
         benchmark.add(caseName, set, {
           setup: async () => {
+            // start prefill progress at 0%
             setBenchmarkResult(caseName, { prefill: 0 })
-            await db.clear()
+
             for (let i = 0; i < prefill; i++) {
               if (!running.current) return
-              const storeName = Math.random().toFixed(16)
               await set()
               if (!running.current) return
               prefillProgress(caseName, { i })
             }
+
+            // end prefill progress to 100%
             prefillProgress.cancel()
             setBenchmarkResult(caseName, { prefill: 1 })
           },
-          teardown: db.clear,
+          teardown,
         })
       }
     }
