@@ -81,6 +81,7 @@ const Benchmark = ({
     }
     if (running && !abort) {
       cycle?.(name, { mean: totalms / iterations })
+      totalms = 0
     }
     await teardown?.(name)
   }
