@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo, createContext } from 'react'
 import throttle from 'lodash.throttle'
 import indexedDB from './dbs/indexedDB'
 import Benchmark from './lib/Benchmark'
@@ -33,6 +33,20 @@ const clearDbs = async (): Promise<void> => {
   }
 }
 
+/** Generates data of a given type. */
+const generateData = (data: DataType): any => {
+  const value =
+    data === 'String(1000)'
+      ? new Array(1000).fill(0).join('')
+      : data === 'Uint8Array(1000)'
+      ? new Uint8Array(1000)
+      : null
+  if (value === null) {
+    throw new Error('Unsupported data type: ' + data)
+  }
+  return value
+}
+
 /** Asynchronously waits for a number of milliseconds*/
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -53,6 +67,9 @@ function App() {
 
   /** Generate a name for a prefill empty case. */
   const prefillEmptyName = (name: string) => `${name} (prefill empty)`
+
+  /** Generate a name for a prefill empty case. */
+  const prefillSingleObjectStore = (name: string) => `${name} (prefill single object store)`
 
   // form validation
   const [errors, setErrors] = useState<Form>({})
@@ -159,20 +176,16 @@ function App() {
       const [name, db] = dbEntries[i]
 
       /** Inserts a value of the selected DataType into a new object store. */
-      const set = async () => {
-        const value =
-          data === 'String(1000)'
-            ? new Array(1000).fill(0).join('')
-            : data === 'Uint8Array(1000)'
-            ? new Uint8Array(1000)
-            : null
-        if (value === null) {
-          throw new Error('Unsupported data type: ' + data)
-        }
-        const storeName = Math.random().toFixed(16)
+      const set = async (storeName: string) => {
         const key = Math.random().toFixed(16)
+        await db.set(storeName, key, generateData(data as DataType))
+      }
+
+      /** Creates a new object store and sets a value on it. */
+      const createAndSet = async () => {
+        const storeName = Math.random().toFixed(16)
         await db.createStore(storeName)
-        await db.set(storeName, key, value)
+        await set(storeName)
       }
 
       /** Clear the database and delay at the end of each case. */
@@ -182,17 +195,43 @@ function App() {
       }
 
       // normal
-      benchmark.add(name, set, {
+      benchmark.add(name, createAndSet, {
         setup: async name => {
           setBenchmarkResult(name, { progress: 0 })
         },
         teardown,
       })
 
+      // prefill single object store
+      if (prefill > 0) {
+        const caseName = prefillSingleObjectStore(name)
+        benchmark.add(caseName, createAndSet, {
+          setup: async () => {
+            // start prefill progress at 0%
+            setBenchmarkResult(caseName, { prefill: 0 })
+
+            const storeName = Math.random().toFixed(16)
+            await db.createStore(storeName)
+            if (!running.current) return
+
+            for (let i = 0; i < prefill; i++) {
+              if (!running.current) return
+              await set(storeName)
+              prefillProgress(caseName, { i })
+            }
+
+            // end prefill progress to 100%
+            prefillProgress.cancel()
+            setBenchmarkResult(caseName, { prefill: 1 })
+          },
+          teardown,
+        })
+      }
+
       // prefill empty
       if (prefill > 0) {
         const caseName = prefillEmptyName(name)
-        benchmark.add(caseName, set, {
+        benchmark.add(caseName, createAndSet, {
           setup: async () => {
             // start prefill progress at 0%
             setBenchmarkResult(caseName, { prefill: 0 })
@@ -216,14 +255,14 @@ function App() {
       // prefill
       if (prefill > 0) {
         const caseName = prefillName(name)
-        benchmark.add(caseName, set, {
+        benchmark.add(caseName, createAndSet, {
           setup: async () => {
             // start prefill progress at 0%
             setBenchmarkResult(caseName, { prefill: 0 })
 
             for (let i = 0; i < prefill; i++) {
               if (!running.current) return
-              await set()
+              await createAndSet()
               if (!running.current) return
               prefillProgress(caseName, { i })
             }
@@ -300,10 +339,17 @@ function App() {
               <Fragment key={name}>
                 <BenchmarkResultRow name={name} result={benchmarkResults[name]} />
                 {prefill > 0 && (
-                  <BenchmarkResultRow name={prefillEmptyName(name)} result={benchmarkResults[prefillEmptyName(name)]} />
-                )}
-                {prefill > 0 && (
-                  <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+                  <>
+                    <BenchmarkResultRow
+                      name={prefillSingleObjectStore(name)}
+                      result={benchmarkResults[prefillSingleObjectStore(name)]}
+                    />
+                    <BenchmarkResultRow
+                      name={prefillEmptyName(name)}
+                      result={benchmarkResults[prefillEmptyName(name)]}
+                    />
+                    <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+                  </>
                 )}
               </Fragment>
             ))}
