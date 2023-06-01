@@ -238,7 +238,7 @@ function App() {
               />
               <FormRow
                 defaultValue={DEFAULT_ITERATIONS.toString()}
-                description='Number of iterations to measure for each case.'
+                description='Number of insertions to execute and measure after the database is prefilled.'
                 label='Iterations'
                 set={useCallback((value: string) => setIterations(parseInt(value, 10)), [])}
               />
