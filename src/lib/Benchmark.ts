@@ -2,7 +2,7 @@ interface BenchmarkCase {
   /** The name of the case. This is passed to several of the callbacks. */
   name: string
   /** The synchronous or asynchronous function that will be executed and measured. */
-  f: () => Promise<void> | void
+  f: (i: number) => Promise<void> | void
   /** Callback invoked once before any iterations of a case. */
   setup?: (name: string) => Promise<void>
   /** Callback invoked once after all iterations of a case have run. */
@@ -71,7 +71,7 @@ const Benchmark = ({
         break
       }
       const start = performance.now()
-      const p = f()
+      const p = f(j)
       if (p instanceof Promise) {
         await p
       }
@@ -120,7 +120,7 @@ const Benchmark = ({
     /** Adds a new case. */
     add: (
       name: string,
-      f: () => Promise<void> | void,
+      f: (i: number) => Promise<void> | void,
       { setup, teardown }: { setup?: (name: string) => Promise<void>; teardown?: (name: string) => Promise<void> } = {},
     ) => {
       cases.push({ name, f, setup, teardown })

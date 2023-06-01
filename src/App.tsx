@@ -71,6 +71,9 @@ function App() {
   /** Generate a name for a prefill empty case. */
   const prefillSingleObjectStore = (name: string) => `${name} (prefill single object store)`
 
+  /** Generate a name for a prefill get case. */
+  const prefillGetName = (name: string) => `${name} (prefill get)`
+
   // form validation
   const [errors, setErrors] = useState<Form>({})
   const setError = (key: keyof Form, value?: string) =>
@@ -176,9 +179,8 @@ function App() {
       const [name, db] = dbEntries[i]
 
       /** Inserts a value of the selected DataType into a new object store. */
-      const set = async (storeName: string) => {
-        const key = Math.random().toFixed(16)
-        await db.set(storeName, key, generateData(data as DataType))
+      const set = async (storeName: string, key?: string): Promise<void> => {
+        await db.set(storeName, Math.random().toFixed(16), generateData(data as DataType))
       }
 
       /** Creates a new object store and sets a value on it. */
@@ -252,7 +254,7 @@ function App() {
         })
       }
 
-      // prefill
+      // prefill set
       if (prefill > 0) {
         const caseName = prefillName(name)
         benchmark.add(caseName, createAndSet, {
@@ -273,6 +275,37 @@ function App() {
           },
           teardown,
         })
+      }
+
+      // prefill get
+      if (prefill > 0) {
+        const caseName = prefillGetName(name)
+        benchmark.add(
+          caseName,
+          async i => {
+            await db.get(i.toString(), i.toString())
+          },
+          {
+            setup: async () => {
+              // start prefill progress at 0%
+              setBenchmarkResult(caseName, { prefill: 0 })
+
+              for (let i = 0; i < prefill; i++) {
+                if (!running.current) return
+                const storeName = i.toString()
+                const store = await db.createStore(storeName)
+                await set(storeName, i.toString())
+                if (!running.current) return
+                prefillProgress(caseName, { i })
+              }
+
+              // end prefill progress to 100%
+              prefillProgress.cancel()
+              setBenchmarkResult(caseName, { prefill: 1 })
+            },
+            teardown,
+          },
+        )
       }
     }
 
@@ -349,6 +382,7 @@ function App() {
                       result={benchmarkResults[prefillEmptyName(name)]}
                     />
                     <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
+                    <BenchmarkResultRow name={prefillGetName(name)} result={benchmarkResults[prefillGetName(name)]} />
                   </>
                 )}
               </Fragment>
