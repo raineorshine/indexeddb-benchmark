@@ -261,6 +261,30 @@ function App() {
       },
       after: () => teardown(db),
     }),
+
+    ['set! | prefill single object store']: (db, testName) => ({
+      preMeasure: async i => {
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+      },
+      measure: async i => {
+        const storeName = i.toString()
+        await set(db, storeName, i.toString(), data as DataType)
+      },
+      after: () => teardown(db),
+    }),
+
+    ['set! | empty prefilled object stores']: (db, testName) => ({
+      preMeasure: async i => {
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+      },
+      measure: async i => {
+        const storeName = i.toString()
+        await set(db, storeName, i.toString(), data as DataType)
+      },
+      after: () => teardown(db),
+    }),
   }
 
   const run = async () => {
