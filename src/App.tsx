@@ -50,7 +50,7 @@ const createAndSet = async (db: Database, data: DataType) => {
 }
 
 /** Clear the database and wait before starting the next case. */
-const after = async (db: Database) => {
+const teardown = async (db: Database) => {
   await db.clear()
   await sleep(DELAY_BETWEEN_CASES)
 }
@@ -205,7 +205,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i.toString())
       },
-      after: () => after(db),
+      after: () => teardown(db),
     }),
 
     ['get (readwrite)']: (db: Database, testName: string) => ({
@@ -217,7 +217,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i.toString(), 'readwrite')
       },
-      after: () => after(db),
+      after: () => teardown(db),
     }),
 
     ['prefill single object store']: (db, testName) => ({
@@ -227,7 +227,7 @@ function App() {
         await set(db, storeName, i.toString(), data as DataType)
       },
       measure: () => createAndSet(db, data as DataType),
-      after: () => after(db),
+      after: () => teardown(db),
     }),
 
     ['empty prefilled object stores']: (db, testName) => ({
@@ -237,7 +237,7 @@ function App() {
         await set(db, storeName, i.toString(), data as DataType)
       },
       measure: () => createAndSet(db, data as DataType),
-      after: () => after(db),
+      after: () => teardown(db),
     }),
   }
 
