@@ -42,14 +42,6 @@ const set = async (db: Database, storeName: string, key: string, data: DataType)
 const setRandom = async (db: Database, storeName: string, data: DataType): Promise<void> =>
   await db.set(storeName, Math.random().toFixed(16), generateData(data))
 
-/** Creates a new object store and sets a value on it. */
-const createAndSet = async (db: Database, data: DataType) => {
-  const storeName = Math.random().toFixed(16)
-  await db.createStore(storeName)
-  await setRandom(db, storeName, data)
-}
-
-/** Clear the database and wait before starting the next case. */
 const teardown = async (db: Database) => {
   await db.clear()
   await sleep(DELAY_BETWEEN_CASES)
@@ -196,7 +188,7 @@ function App() {
       after?: () => void | Promise<void>
     }
   } = {
-    ['get (no prefill)']: (db: Database, testName: string) => ({
+    ['get | no prefill']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         if (i > iterations) return
         const storeName = i.toString()
@@ -209,7 +201,7 @@ function App() {
       after: () => teardown(db),
     }),
 
-    ['set (no prefill)']: (db: Database, testName: string) => ({
+    ['set! | no prefill']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         if (i > iterations) return
         const storeName = i.toString()
@@ -222,7 +214,7 @@ function App() {
       after: () => teardown(db),
     }),
 
-    ['get (readonly)']: (db: Database, testName: string) => ({
+    ['get | readonly']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
@@ -234,7 +226,7 @@ function App() {
       after: () => teardown(db),
     }),
 
-    ['get (readwrite)']: (db: Database, testName: string) => ({
+    ['get | readwrite']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
@@ -246,23 +238,27 @@ function App() {
       after: () => teardown(db),
     }),
 
-    ['prefill single object store']: (db, testName) => ({
+    ['get | prefill single object store']: (db, testName) => ({
       preMeasure: async i => {
-        const storeName = Math.random().toFixed(16)
+        const storeName = i.toString()
         const store = await db.createStore(storeName)
         await set(db, storeName, i.toString(), data as DataType)
       },
-      measure: () => createAndSet(db, data as DataType),
+      measure: async i => {
+        await db.get(i.toString(), i.toString())
+      },
       after: () => teardown(db),
     }),
 
-    ['empty prefilled object stores']: (db, testName) => ({
+    ['get | empty prefilled object stores']: (db, testName) => ({
       preMeasure: async i => {
-        const storeName = Math.random().toFixed(16)
+        const storeName = i.toString()
         const store = await db.createStore(storeName)
         await set(db, storeName, i.toString(), data as DataType)
       },
-      measure: () => createAndSet(db, data as DataType),
+      measure: async i => {
+        await db.get(i.toString(), i.toString())
+      },
       after: () => teardown(db),
     }),
   }
