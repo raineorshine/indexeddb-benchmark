@@ -5,6 +5,7 @@ import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
 import BenchmarkResult from './types/BenchmarkResult'
+import Database from './types/Database'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
@@ -31,6 +32,27 @@ const clearDbs = async (): Promise<void> => {
     const [name, db] = dbEntries[i]
     await db.clear()
   }
+}
+
+/** Inserts a value of the selected DataType into a new object store at a random key. */
+const set = async (db: Database, storeName: string, key: string, data: DataType): Promise<void> =>
+  await db.set(storeName, key, generateData(data))
+
+/** Inserts a value of the selected DataType into a new object store at the given key. */
+const setRandom = async (db: Database, storeName: string, data: DataType): Promise<void> =>
+  await db.set(storeName, Math.random().toFixed(16), generateData(data))
+
+/** Creates a new object store and sets a value on it. */
+const createAndSet = async (db: Database, data: DataType) => {
+  const storeName = Math.random().toFixed(16)
+  await db.createStore(storeName)
+  await setRandom(db, storeName, data)
+}
+
+/** Clear the database and wait before starting the next case. */
+const teardown = async (db: Database) => {
+  await db.clear()
+  await sleep(DELAY_BETWEEN_CASES)
 }
 
 /** Generates data of a given type. */
@@ -63,7 +85,7 @@ function App() {
   const running = useRef<boolean>(false)
 
   /** Generate a name for a prefill case. */
-  const prefillName = (name: string) => `${name} (prefill)`
+  const prefillSetName = (name: string) => `${name} (prefill)`
 
   /** Generate a name for a prefill empty case. */
   const prefillEmptyName = (name: string) => `${name} (prefill empty)`
@@ -170,6 +192,135 @@ function App() {
     clear()
   }
 
+  // specs for all tests
+  const tests: {
+    [key: string]: (
+      db: Database,
+      testName: string,
+    ) => {
+      f: (i: number) => void | Promise<void>
+      setup: () => Promise<void>
+      teardown: () => Promise<void>
+    }
+  } = {
+    // get (readonly)
+    [prefillGetName('indexedDB')]: (db: Database, testName: string) => ({
+      f: async i => {
+        await db.get(i.toString(), i.toString())
+      },
+      setup: async () => {
+        // start prefill progress at 0%
+        setBenchmarkResult(testName, { prefill: 0 })
+
+        for (let i = 0; i < prefill; i++) {
+          if (!running.current) return
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i.toString(), data as DataType)
+          if (!running.current) return
+          prefillProgress(testName, { i })
+        }
+
+        // end prefill progress to 100%
+        prefillProgress.cancel()
+        setBenchmarkResult(testName, { prefill: 1 })
+      },
+      teardown: () => teardown(db),
+    }),
+
+    // get (readwrite)
+    [prefillGetReadwriteName('indexedDB')]: (db: Database, testName: string) => ({
+      f: async i => {
+        await db.get(i.toString(), i.toString(), 'readwrite')
+      },
+      setup: async () => {
+        // start prefill progress at 0%
+        setBenchmarkResult(testName, { prefill: 0 })
+
+        for (let i = 0; i < prefill; i++) {
+          if (!running.current) return
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i.toString(), data as DataType)
+          if (!running.current) return
+          prefillProgress(testName, { i })
+        }
+
+        // end prefill progress to 100%
+        prefillProgress.cancel()
+        setBenchmarkResult(testName, { prefill: 1 })
+      },
+      teardown: () => teardown(db),
+    }),
+
+    // single object store
+    [prefillSingleObjectStore('indexedDB')]: (db, testName) => ({
+      f: () => createAndSet(db, data as DataType),
+      setup: async () => {
+        // start prefill progress at 0%
+        setBenchmarkResult(testName, { prefill: 0 })
+
+        const storeName = Math.random().toFixed(16)
+        await db.createStore(storeName)
+        if (!running.current) return
+
+        for (let i = 0; i < prefill; i++) {
+          if (!running.current) return
+          await setRandom(db, storeName, data as DataType)
+          prefillProgress(testName, { i })
+        }
+
+        // end prefill progress to 100%
+        prefillProgress.cancel()
+        setBenchmarkResult(testName, { prefill: 1 })
+      },
+      teardown: () => teardown(db),
+    }),
+
+    // set
+    [prefillSetName('indexedDB')]: (db, testName) => ({
+      f: () => createAndSet(db, data as DataType),
+      setup: async () => {
+        // start prefill progress at 0%
+        setBenchmarkResult(testName, { prefill: 0 })
+
+        for (let i = 0; i < prefill; i++) {
+          if (!running.current) return
+          await createAndSet(db, data as DataType)
+          if (!running.current) return
+          prefillProgress(testName, { i })
+        }
+
+        // end prefill progress to 100%
+        prefillProgress.cancel()
+        setBenchmarkResult(testName, { prefill: 1 })
+      },
+      teardown: () => teardown(db),
+    }),
+
+    // empty object stores
+    [prefillEmptyName('indexedDB')]: (db, testName) => ({
+      f: () => createAndSet(db, data as DataType),
+      setup: async () => {
+        // start prefill progress at 0%
+        setBenchmarkResult(testName, { prefill: 0 })
+
+        for (let i = 0; i < prefill; i++) {
+          if (!running.current) return
+          const storeName = Math.random().toFixed(16)
+          await db.createStore(storeName)
+          if (!running.current) return
+          prefillProgress(testName, { i })
+        }
+
+        // end prefill progress to 100%
+        prefillProgress.cancel()
+        setBenchmarkResult(testName, { prefill: 1 })
+      },
+      teardown: () => teardown(db),
+    }),
+  }
+
   const run = async () => {
     if (running.current) return
 
@@ -181,157 +332,10 @@ function App() {
     for (let i = 0; i < dbEntries.length; i++) {
       const [name, db] = dbEntries[i]
 
-      /** Inserts a value of the selected DataType into a new object store. */
-      const set = async (storeName: string, key?: string): Promise<void> => {
-        await db.set(storeName, Math.random().toFixed(16), generateData(data as DataType))
-      }
-
-      /** Creates a new object store and sets a value on it. */
-      const createAndSet = async () => {
-        const storeName = Math.random().toFixed(16)
-        await db.createStore(storeName)
-        await set(storeName)
-      }
-
-      /** Clear the database and delay at the end of each case. */
-      const teardown = async () => {
-        await db.clear()
-        await sleep(DELAY_BETWEEN_CASES)
-      }
-
-      // prefill get (readonly)
-      if (prefill > 0) {
-        const caseName = prefillGetName(name)
-        benchmark.add(
-          caseName,
-          async i => {
-            await db.get(i.toString(), i.toString())
-          },
-          {
-            setup: async () => {
-              // start prefill progress at 0%
-              setBenchmarkResult(caseName, { prefill: 0 })
-
-              for (let i = 0; i < prefill; i++) {
-                if (!running.current) return
-                const storeName = i.toString()
-                const store = await db.createStore(storeName)
-                await set(storeName, i.toString())
-                if (!running.current) return
-                prefillProgress(caseName, { i })
-              }
-
-              // end prefill progress to 100%
-              prefillProgress.cancel()
-              setBenchmarkResult(caseName, { prefill: 1 })
-            },
-            teardown,
-          },
-        )
-      }
-      // prefill get (readwrite)
-      if (prefill > 0) {
-        const caseName = prefillGetReadwriteName(name)
-        benchmark.add(
-          caseName,
-          async i => {
-            await db.get(i.toString(), i.toString(), 'readwrite')
-          },
-          {
-            setup: async () => {
-              // start prefill progress at 0%
-              setBenchmarkResult(caseName, { prefill: 0 })
-
-              for (let i = 0; i < prefill; i++) {
-                if (!running.current) return
-                const storeName = i.toString()
-                const store = await db.createStore(storeName)
-                await set(storeName, i.toString())
-                if (!running.current) return
-                prefillProgress(caseName, { i })
-              }
-
-              // end prefill progress to 100%
-              prefillProgress.cancel()
-              setBenchmarkResult(caseName, { prefill: 1 })
-            },
-            teardown,
-          },
-        )
-      }
-
-      // prefill single object store
-      if (prefill > 0) {
-        const caseName = prefillSingleObjectStore(name)
-        benchmark.add(caseName, createAndSet, {
-          setup: async () => {
-            // start prefill progress at 0%
-            setBenchmarkResult(caseName, { prefill: 0 })
-
-            const storeName = Math.random().toFixed(16)
-            await db.createStore(storeName)
-            if (!running.current) return
-
-            for (let i = 0; i < prefill; i++) {
-              if (!running.current) return
-              await set(storeName)
-              prefillProgress(caseName, { i })
-            }
-
-            // end prefill progress to 100%
-            prefillProgress.cancel()
-            setBenchmarkResult(caseName, { prefill: 1 })
-          },
-          teardown,
-        })
-      }
-
-      // prefill empty
-      if (prefill > 0) {
-        const caseName = prefillEmptyName(name)
-        benchmark.add(caseName, createAndSet, {
-          setup: async () => {
-            // start prefill progress at 0%
-            setBenchmarkResult(caseName, { prefill: 0 })
-
-            for (let i = 0; i < prefill; i++) {
-              if (!running.current) return
-              const storeName = Math.random().toFixed(16)
-              await db.createStore(storeName)
-              if (!running.current) return
-              prefillProgress(caseName, { i })
-            }
-
-            // end prefill progress to 100%
-            prefillProgress.cancel()
-            setBenchmarkResult(caseName, { prefill: 1 })
-          },
-          teardown,
-        })
-      }
-
-      // prefill set
-      if (prefill > 0) {
-        const caseName = prefillName(name)
-        benchmark.add(caseName, createAndSet, {
-          setup: async () => {
-            // start prefill progress at 0%
-            setBenchmarkResult(caseName, { prefill: 0 })
-
-            for (let i = 0; i < prefill; i++) {
-              if (!running.current) return
-              await createAndSet()
-              if (!running.current) return
-              prefillProgress(caseName, { i })
-            }
-
-            // end prefill progress to 100%
-            prefillProgress.cancel()
-            setBenchmarkResult(caseName, { prefill: 1 })
-          },
-          teardown,
-        })
-      }
+      Object.entries(tests).forEach(([testName, testFactory]) => {
+        const { f, setup, teardown } = testFactory(db, testName)
+        benchmark.add(testName, f, { setup, teardown })
+      })
     }
 
     if (running.current) {
@@ -393,16 +397,11 @@ function App() {
         <h2>Results</h2>
         <table>
           <tbody>
-            {Object.keys(dbs).map(name => (
-              <Fragment key={name}>
-                <BenchmarkResultRow name='get (readonly)' result={benchmarkResults[prefillGetName(name)]} />
-                <BenchmarkResultRow name='get (readwrite)' result={benchmarkResults[prefillGetReadwriteName(name)]} />
-                <BenchmarkResultRow name='set' result={benchmarkResults[prefillName(name)]} />
-                <BenchmarkResultRow
-                  name='single object store'
-                  result={benchmarkResults[prefillSingleObjectStore(name)]}
-                />
-                <BenchmarkResultRow name='empty object stores' result={benchmarkResults[prefillEmptyName(name)]} />
+            {Object.keys(dbs).map(dbName => (
+              <Fragment key={dbName}>
+                {Object.keys(tests).map(testName => (
+                  <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[testName]} />
+                ))}
               </Fragment>
             ))}
           </tbody>
