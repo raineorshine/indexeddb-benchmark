@@ -72,6 +72,9 @@ function App() {
   const prefillSingleObjectStore = (name: string) => `${name} (prefill single object store)`
 
   /** Generate a name for a prefill get case. */
+  const prefillGetReadwriteName = (name: string) => `${name} (prefill get readwrite)`
+
+  /** Generate a name for a prefill get case. */
   const prefillGetName = (name: string) => `${name} (prefill get)`
 
   // form validation
@@ -196,13 +199,66 @@ function App() {
         await sleep(DELAY_BETWEEN_CASES)
       }
 
-      // normal
-      benchmark.add(name, createAndSet, {
-        setup: async name => {
-          setBenchmarkResult(name, { progress: 0 })
-        },
-        teardown,
-      })
+      // prefill get (readonly)
+      if (prefill > 0) {
+        const caseName = prefillGetName(name)
+        benchmark.add(
+          caseName,
+          async i => {
+            await db.get(i.toString(), i.toString())
+          },
+          {
+            setup: async () => {
+              // start prefill progress at 0%
+              setBenchmarkResult(caseName, { prefill: 0 })
+
+              for (let i = 0; i < prefill; i++) {
+                if (!running.current) return
+                const storeName = i.toString()
+                const store = await db.createStore(storeName)
+                await set(storeName, i.toString())
+                if (!running.current) return
+                prefillProgress(caseName, { i })
+              }
+
+              // end prefill progress to 100%
+              prefillProgress.cancel()
+              setBenchmarkResult(caseName, { prefill: 1 })
+            },
+            teardown,
+          },
+        )
+      }
+      // prefill get (readwrite)
+      if (prefill > 0) {
+        const caseName = prefillGetReadwriteName(name)
+        benchmark.add(
+          caseName,
+          async i => {
+            await db.get(i.toString(), i.toString(), 'readwrite')
+          },
+          {
+            setup: async () => {
+              // start prefill progress at 0%
+              setBenchmarkResult(caseName, { prefill: 0 })
+
+              for (let i = 0; i < prefill; i++) {
+                if (!running.current) return
+                const storeName = i.toString()
+                const store = await db.createStore(storeName)
+                await set(storeName, i.toString())
+                if (!running.current) return
+                prefillProgress(caseName, { i })
+              }
+
+              // end prefill progress to 100%
+              prefillProgress.cancel()
+              setBenchmarkResult(caseName, { prefill: 1 })
+            },
+            teardown,
+          },
+        )
+      }
 
       // prefill single object store
       if (prefill > 0) {
@@ -276,37 +332,6 @@ function App() {
           teardown,
         })
       }
-
-      // prefill get
-      if (prefill > 0) {
-        const caseName = prefillGetName(name)
-        benchmark.add(
-          caseName,
-          async i => {
-            await db.get(i.toString(), i.toString())
-          },
-          {
-            setup: async () => {
-              // start prefill progress at 0%
-              setBenchmarkResult(caseName, { prefill: 0 })
-
-              for (let i = 0; i < prefill; i++) {
-                if (!running.current) return
-                const storeName = i.toString()
-                const store = await db.createStore(storeName)
-                await set(storeName, i.toString())
-                if (!running.current) return
-                prefillProgress(caseName, { i })
-              }
-
-              // end prefill progress to 100%
-              prefillProgress.cancel()
-              setBenchmarkResult(caseName, { prefill: 1 })
-            },
-            teardown,
-          },
-        )
-      }
     }
 
     if (running.current) {
@@ -370,21 +395,14 @@ function App() {
           <tbody>
             {Object.keys(dbs).map(name => (
               <Fragment key={name}>
-                <BenchmarkResultRow name={name} result={benchmarkResults[name]} />
-                {prefill > 0 && (
-                  <>
-                    <BenchmarkResultRow
-                      name={prefillSingleObjectStore(name)}
-                      result={benchmarkResults[prefillSingleObjectStore(name)]}
-                    />
-                    <BenchmarkResultRow
-                      name={prefillEmptyName(name)}
-                      result={benchmarkResults[prefillEmptyName(name)]}
-                    />
-                    <BenchmarkResultRow name={prefillName(name)} result={benchmarkResults[prefillName(name)]} />
-                    <BenchmarkResultRow name={prefillGetName(name)} result={benchmarkResults[prefillGetName(name)]} />
-                  </>
-                )}
+                <BenchmarkResultRow name='get (readonly)' result={benchmarkResults[prefillGetName(name)]} />
+                <BenchmarkResultRow name='get (readwrite)' result={benchmarkResults[prefillGetReadwriteName(name)]} />
+                <BenchmarkResultRow name='set' result={benchmarkResults[prefillName(name)]} />
+                <BenchmarkResultRow
+                  name='single object store'
+                  result={benchmarkResults[prefillSingleObjectStore(name)]}
+                />
+                <BenchmarkResultRow name='empty object stores' result={benchmarkResults[prefillEmptyName(name)]} />
               </Fragment>
             ))}
           </tbody>
