@@ -141,7 +141,7 @@ function App() {
       PROGRESS_THROTTLE,
       { leading: true, trailing: false },
     ),
-    [iterations],
+    [prefill],
   )
 
   const benchmark = useMemo(
