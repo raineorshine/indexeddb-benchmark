@@ -50,7 +50,7 @@ const createAndSet = async (db: Database, data: DataType) => {
 }
 
 /** Clear the database and wait before starting the next case. */
-const teardown = async (db: Database) => {
+const after = async (db: Database) => {
   await db.clear()
   await sleep(DELAY_BETWEEN_CASES)
 }
@@ -180,8 +180,8 @@ function App() {
             progress: 1,
           })
         },
-        setup: clearDbs,
-        teardown: clearDbs,
+        beforeAll: clearDbs,
+        afterAll: clearDbs,
       }),
     [iterations],
   )
@@ -198,17 +198,17 @@ function App() {
       db: Database,
       testName: string,
     ) => {
-      f: (i: number) => void | Promise<void>
-      setup: () => Promise<void>
-      teardown: () => Promise<void>
+      measure: (i: number) => void | Promise<void>
+      before: () => Promise<void>
+      after: () => Promise<void>
     }
   } = {
     // get (readonly)
     [prefillGetName('indexedDB')]: (db: Database, testName: string) => ({
-      f: async i => {
+      measure: async i => {
         await db.get(i.toString(), i.toString())
       },
-      setup: async () => {
+      before: async () => {
         // start prefill progress at 0%
         setBenchmarkResult(testName, { prefill: 0 })
 
@@ -225,15 +225,15 @@ function App() {
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
-      teardown: () => teardown(db),
+      after: () => after(db),
     }),
 
     // get (readwrite)
     [prefillGetReadwriteName('indexedDB')]: (db: Database, testName: string) => ({
-      f: async i => {
+      measure: async i => {
         await db.get(i.toString(), i.toString(), 'readwrite')
       },
-      setup: async () => {
+      before: async () => {
         // start prefill progress at 0%
         setBenchmarkResult(testName, { prefill: 0 })
 
@@ -250,13 +250,13 @@ function App() {
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
-      teardown: () => teardown(db),
+      after: () => after(db),
     }),
 
     // single object store
     [prefillSingleObjectStore('indexedDB')]: (db, testName) => ({
-      f: () => createAndSet(db, data as DataType),
-      setup: async () => {
+      measure: () => createAndSet(db, data as DataType),
+      before: async () => {
         // start prefill progress at 0%
         setBenchmarkResult(testName, { prefill: 0 })
 
@@ -274,13 +274,13 @@ function App() {
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
-      teardown: () => teardown(db),
+      after: () => after(db),
     }),
 
     // set
     [prefillSetName('indexedDB')]: (db, testName) => ({
-      f: () => createAndSet(db, data as DataType),
-      setup: async () => {
+      measure: () => createAndSet(db, data as DataType),
+      before: async () => {
         // start prefill progress at 0%
         setBenchmarkResult(testName, { prefill: 0 })
 
@@ -295,13 +295,13 @@ function App() {
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
-      teardown: () => teardown(db),
+      after: () => after(db),
     }),
 
     // empty object stores
     [prefillEmptyName('indexedDB')]: (db, testName) => ({
-      f: () => createAndSet(db, data as DataType),
-      setup: async () => {
+      measure: () => createAndSet(db, data as DataType),
+      before: async () => {
         // start prefill progress at 0%
         setBenchmarkResult(testName, { prefill: 0 })
 
@@ -317,7 +317,7 @@ function App() {
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
-      teardown: () => teardown(db),
+      after: () => after(db),
     }),
   }
 
@@ -333,8 +333,7 @@ function App() {
       const [name, db] = dbEntries[i]
 
       Object.entries(tests).forEach(([testName, testFactory]) => {
-        const { f, setup, teardown } = testFactory(db, testName)
-        benchmark.add(testName, f, { setup, teardown })
+        benchmark.add(testName, testFactory(db, testName))
       })
     }
 
