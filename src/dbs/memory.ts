@@ -1,16 +1,26 @@
 import Database from '../types/Database'
 
-let cache: { [key: string]: any } = {}
+type StoreName = string
+type RecordKey = string
+
+let cache: {
+  [key: StoreName]: {
+    [key: RecordKey]: string
+  }
+} = {}
 
 const runner: Database = {
   clear: async () => {
     cache = {}
   },
-  get: async (key: string): Promise<string | undefined> => {
-    return cache[key]
+  createStore: async (storeName: StoreName) => {
+    cache[storeName] = {}
   },
-  set: async (key: string, value: any): Promise<void> => {
-    cache[key] = value
+  get: async (storeName: StoreName, key: RecordKey): Promise<string | undefined> => {
+    return cache[storeName][key]
+  },
+  set: async (storeName: StoreName, key: RecordKey, value: any): Promise<void> => {
+    cache[storeName][key] = value
   },
 }
 
