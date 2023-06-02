@@ -2,13 +2,13 @@ interface BenchmarkCase {
   /** The name of the case. This is passed to several of the callbacks. */
   name: string
   /** The function that will be executed and measured once for each iteration. */
-  measure: (i: number) => Promise<void> | void
+  measure: (i: number) => void | Promise<void>
   /** The function to be executed once per iteration before measurement starts. Useful for prefilling the database. */
-  preMeasure?: (i: number) => Promise<void> | void
+  preMeasure?: (i: number) => void | Promise<void>
   /** Callback invoked once before any iterations of a case. */
-  before?: (name: string) => Promise<void>
+  before?: (name: string) => void | Promise<void>
   /** Callback invoked once after all iterations of a case have run. Still called if run is aborted. */
-  after?: (name: string) => Promise<void>
+  after?: (name: string) => void | Promise<void>
 }
 
 const Benchmark = ({
@@ -47,9 +47,9 @@ const Benchmark = ({
   /** Total number of iterations to run before measurement in each case. */
   preMeasureIterations?: number
   /** Global setup called once at the start of run. */
-  beforeAll?: () => Promise<void>
+  beforeAll?: () => void | Promise<void>
   /** Global teardown called once at the end of run. */
-  afterAll?: () => Promise<void>
+  afterAll?: () => void | Promise<void>
 } = {}) => {
   const tests: BenchmarkCase[] = []
   let totalms = 0
@@ -141,10 +141,10 @@ const Benchmark = ({
     add: (
       name: string,
       args: {
-        preMeasure?: (i: number) => Promise<void> | void
-        measure: (i: number) => Promise<void> | void
-        before?: (name: string) => Promise<void>
-        after?: (name: string) => Promise<void>
+        preMeasure?: (i: number) => void | Promise<void>
+        measure: (i: number) => void | Promise<void>
+        before?: (name: string) => void | Promise<void>
+        after?: (name: string) => void | Promise<void>
       },
     ) => {
       tests.push({ name, ...args })
