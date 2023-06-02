@@ -84,22 +84,6 @@ function App() {
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
   const running = useRef<boolean>(false)
 
-  /** Generate a name for a prefill case. */
-  const prefillSetName = (name: string) => `${name} (prefill)`
-
-  /** Generate a name for a prefill empty case. */
-  const prefillEmptyName = (name: string) => `${name} (prefill empty)`
-
-  /** Generate a name for a prefill empty case. */
-  const prefillSingleObjectStore = (name: string) => `${name} (prefill single object store)`
-
-  /** Generate a name for a prefill get case. */
-  const prefillGetReadwriteName = (name: string) => `${name} (prefill get readwrite)`
-
-  /** Generate a name for a prefill get case. */
-  const prefillGetName = (name: string) => `${name} (prefill get)`
-
-  // form validation
   const [errors, setErrors] = useState<Form>({})
   const setError = (key: keyof Form, value?: string) =>
     setErrors(errors => ({ ...errors, [key]: value ?? `invalid ${key}` }))
@@ -206,8 +190,7 @@ function App() {
       after?: () => Promise<void>
     }
   } = {
-    // get (readonly)
-    [prefillGetName('indexedDB')]: (db: Database, testName: string) => ({
+    ['get (readonly)']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
@@ -223,8 +206,7 @@ function App() {
       after: () => after(db),
     }),
 
-    // get (readwrite)
-    [prefillGetReadwriteName('indexedDB')]: (db: Database, testName: string) => ({
+    ['get (readwrite)']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
@@ -240,8 +222,7 @@ function App() {
       after: () => after(db),
     }),
 
-    // single object store
-    [prefillSingleObjectStore('indexedDB')]: (db, testName) => ({
+    ['single object store']: (db, testName) => ({
       preMeasure: async i => {
         const storeName = Math.random().toFixed(16)
         const store = await db.createStore(storeName)
@@ -255,23 +236,7 @@ function App() {
       after: () => after(db),
     }),
 
-    // set
-    [prefillSetName('indexedDB')]: (db, testName) => ({
-      preMeasure: async i => {
-        const storeName = Math.random().toFixed(16)
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
-      },
-      measure: () => createAndSet(db, data as DataType),
-      before: async () => {
-        prefillProgress.cancel()
-        setBenchmarkResult(testName, { prefill: 1 })
-      },
-      after: () => after(db),
-    }),
-
-    // empty object stores
-    [prefillEmptyName('indexedDB')]: (db, testName) => ({
+    ['empty prefilled object stores']: (db, testName) => ({
       preMeasure: async i => {
         const storeName = Math.random().toFixed(16)
         const store = await db.createStore(storeName)
