@@ -1,8 +1,10 @@
 interface BenchmarkCase {
   /** The name of the case. This is passed to several of the callbacks. */
   name: string
-  /** The synchronous or asynchronous function that will be executed and measured. */
+  /** The function that will be executed and measured once for each iteration. */
   measure: (i: number) => Promise<void> | void
+  /** The function to be executed once per iteration before measurement starts. Useful for prefilling the database. */
+  preMeasure?: (i: number) => Promise<void> | void
   /** Callback invoked once before any iterations of a case. */
   before?: (name: string) => Promise<void>
   /** Callback invoked once after all iterations of a case have run. Still called if run is aborted. */
@@ -15,6 +17,8 @@ const Benchmark = ({
   iterations = 1000,
   beforeAll,
   afterAll,
+  preMeasureIteration,
+  preMeasureIterations,
 }: {
   /** Callback invoked after all iterations of a case are run. Not called if run is aborted. */
   cycle?: (
@@ -36,8 +40,12 @@ const Benchmark = ({
       mean: number
     },
   ) => void | Promise<void>
-  /** Total number of iterations to run in each case. */
+  /** Callback invoked after a single iteration of a preMeasure is run. */
+  preMeasureIteration?: (name: string, stats: { i: number }) => void | Promise<void>
+  /** Total number of iterations to run and measure in each case. */
   iterations?: number
+  /** Total number of iterations to run before measurement in each case. */
+  preMeasureIterations?: number
   /** Global setup called once at the start of run. */
   beforeAll?: () => Promise<void>
   /** Global teardown called once at the end of run. */
@@ -59,7 +67,21 @@ const Benchmark = ({
     totalms = 0
   }
 
-  /** Run all the iterations for a single case. */
+  /** Execute the preMeasure callback for all the iterations of a single test. */
+  const runPreMeasure = async ({ name, before, after, preMeasure }: BenchmarkCase): Promise<void> => {
+    if (!preMeasure) return
+    for (let i = 0; i < (preMeasureIterations || 0); i++) {
+      if (abort || !running) {
+        reset()
+        break
+      }
+      await preMeasure(i)
+      await preMeasureIteration?.(name, { i })
+      if (abort || !running) break
+    }
+  }
+
+  /** Execute and measure all the iterations of a single test. */
   const runCase = async ({ name, before, after, measure }: BenchmarkCase): Promise<void> => {
     await before?.(name)
     if (abort) {
@@ -71,10 +93,7 @@ const Benchmark = ({
         break
       }
       const start = performance.now()
-      const p = measure(i)
-      if (p instanceof Promise) {
-        await p
-      }
+      await measure(i)
       if (abort || !running) break
       const end = performance.now()
       const ms = end - start
@@ -95,7 +114,8 @@ const Benchmark = ({
     await beforeAll?.()
 
     for (let i = 0; i < tests.length; i++) {
-      const { name, measure: f, before, after } = tests[i]
+      if (abort || !running) break
+      await runPreMeasure(tests[i])
       if (abort || !running) break
       await runCase(tests[i])
     }
@@ -111,29 +131,26 @@ const Benchmark = ({
       abort = true
     },
 
-    /** Clears all cases. */
+    /** Clears all tests. */
     clear: () => {
       tests.length = 0
       reset()
     },
 
-    /** Adds a new case. */
+    /** Adds a new test. */
     add: (
       name: string,
-      {
-        measure,
-        before,
-        after,
-      }: {
+      args: {
+        preMeasure?: (i: number) => Promise<void> | void
         measure: (i: number) => Promise<void> | void
         before?: (name: string) => Promise<void>
         after?: (name: string) => Promise<void>
       },
     ) => {
-      tests.push({ name, measure, before, after })
+      tests.push({ name, ...args })
     },
 
-    /** Runs all cases and measures performance. */
+    /** Runs all tests and measures performance. */
     run,
   }
 }

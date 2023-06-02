@@ -171,6 +171,8 @@ function App() {
       Benchmark({
         iterations,
         iteration: progress,
+        preMeasureIteration: prefillProgress,
+        preMeasureIterations: prefill,
         cycle: (name, { mean }) => {
           progress.cancel()
           prefillProgress.cancel()
@@ -183,7 +185,7 @@ function App() {
         beforeAll: clearDbs,
         afterAll: clearDbs,
       }),
-    [iterations],
+    [iterations, prefill],
   )
 
   /** Cancels the current run and clears the benchmark results. */
@@ -199,29 +201,22 @@ function App() {
       testName: string,
     ) => {
       measure: (i: number) => void | Promise<void>
-      before: () => Promise<void>
-      after: () => Promise<void>
+      preMeasure?: (i: number) => void | Promise<void>
+      before?: () => Promise<void>
+      after?: () => Promise<void>
     }
   } = {
     // get (readonly)
     [prefillGetName('indexedDB')]: (db: Database, testName: string) => ({
+      preMeasure: async i => {
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
       measure: async i => {
         await db.get(i.toString(), i.toString())
       },
       before: async () => {
-        // start prefill progress at 0%
-        setBenchmarkResult(testName, { prefill: 0 })
-
-        for (let i = 0; i < prefill; i++) {
-          if (!running.current) return
-          const storeName = i.toString()
-          const store = await db.createStore(storeName)
-          await set(db, storeName, i.toString(), data as DataType)
-          if (!running.current) return
-          prefillProgress(testName, { i })
-        }
-
-        // end prefill progress to 100%
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
@@ -230,23 +225,15 @@ function App() {
 
     // get (readwrite)
     [prefillGetReadwriteName('indexedDB')]: (db: Database, testName: string) => ({
+      preMeasure: async i => {
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
       measure: async i => {
         await db.get(i.toString(), i.toString(), 'readwrite')
       },
       before: async () => {
-        // start prefill progress at 0%
-        setBenchmarkResult(testName, { prefill: 0 })
-
-        for (let i = 0; i < prefill; i++) {
-          if (!running.current) return
-          const storeName = i.toString()
-          const store = await db.createStore(storeName)
-          await set(db, storeName, i.toString(), data as DataType)
-          if (!running.current) return
-          prefillProgress(testName, { i })
-        }
-
-        // end prefill progress to 100%
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
@@ -255,22 +242,13 @@ function App() {
 
     // single object store
     [prefillSingleObjectStore('indexedDB')]: (db, testName) => ({
+      preMeasure: async i => {
+        const storeName = Math.random().toFixed(16)
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
       measure: () => createAndSet(db, data as DataType),
       before: async () => {
-        // start prefill progress at 0%
-        setBenchmarkResult(testName, { prefill: 0 })
-
-        const storeName = Math.random().toFixed(16)
-        await db.createStore(storeName)
-        if (!running.current) return
-
-        for (let i = 0; i < prefill; i++) {
-          if (!running.current) return
-          await setRandom(db, storeName, data as DataType)
-          prefillProgress(testName, { i })
-        }
-
-        // end prefill progress to 100%
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
@@ -279,19 +257,13 @@ function App() {
 
     // set
     [prefillSetName('indexedDB')]: (db, testName) => ({
+      preMeasure: async i => {
+        const storeName = Math.random().toFixed(16)
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
       measure: () => createAndSet(db, data as DataType),
       before: async () => {
-        // start prefill progress at 0%
-        setBenchmarkResult(testName, { prefill: 0 })
-
-        for (let i = 0; i < prefill; i++) {
-          if (!running.current) return
-          await createAndSet(db, data as DataType)
-          if (!running.current) return
-          prefillProgress(testName, { i })
-        }
-
-        // end prefill progress to 100%
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
@@ -300,20 +272,13 @@ function App() {
 
     // empty object stores
     [prefillEmptyName('indexedDB')]: (db, testName) => ({
+      preMeasure: async i => {
+        const storeName = Math.random().toFixed(16)
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
       measure: () => createAndSet(db, data as DataType),
       before: async () => {
-        // start prefill progress at 0%
-        setBenchmarkResult(testName, { prefill: 0 })
-
-        for (let i = 0; i < prefill; i++) {
-          if (!running.current) return
-          const storeName = Math.random().toFixed(16)
-          await db.createStore(storeName)
-          if (!running.current) return
-          prefillProgress(testName, { i })
-        }
-
-        // end prefill progress to 100%
         prefillProgress.cancel()
         setBenchmarkResult(testName, { prefill: 1 })
       },
