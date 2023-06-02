@@ -16,7 +16,7 @@ const formatPercentage = (n: number) => (n * 100).toFixed(0) + '%'
 const formatMilliseconds = (ms: number) => (ms ? `${numberWithCommas(ms)} ms` : '0 ms')
 
 /** Formats milliseconds in terms of iterations per second. */
-const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : '')
+const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : 'very fast')
 
 /** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkResult }) {
@@ -36,7 +36,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
           ? formatPercentage(result.prefill)
           : ''}
       </td>
-      <td style={{ minWidth: '3.5em' }}>{result?.mean ? formatMilliseconds(result.mean) : ''}</td>
+      <td style={{ minWidth: '3.5em' }}>{result?.mean != null ? formatMilliseconds(result.mean) : ''}</td>
       <td
         title={
           result?.mean && result.mean <= 1
@@ -45,7 +45,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
             ? '< 25/sec'
             : result?.mean
             ? '25–1,000/sec'
-            : undefined
+            : 'very fast'
         }
         style={{
           color:
@@ -54,7 +54,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
           textAlign: 'left',
         }}
       >
-        {result?.mean ? formatRate(result?.mean) : ''}
+        {result?.mean != null ? formatRate(result?.mean) : ''}
       </td>
     </tr>
   )

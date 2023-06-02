@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo, createContext } from 'react'
 import throttle from 'lodash.throttle'
 import indexedDB from './dbs/indexedDB'
+import memory from './dbs/memory'
 import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
@@ -23,7 +24,7 @@ const DEFAULT_ITERATIONS = 100
 // number of insertions to prefill per benchmark case
 const DEFAULT_PREFILL = 3000
 
-const dbs = { indexedDB }
+const dbs = { memory, indexedDB }
 
 /** Clears all databases. */
 const clearDbs = async (): Promise<void> => {
@@ -86,8 +87,8 @@ function App() {
     })
   const hasError = () => Object.keys(errors).length === 0
 
-  // benchmark results
   const [benchmarkResults, setBenchmarkResults] = useState<{
+    // key: `${dbName}${testName}`
     [key: string]: BenchmarkResult
   }>({})
 
@@ -102,11 +103,11 @@ function App() {
   }
 
   /** Sets a benchmark result for a specific case. Only overwrites given properties. */
-  const setBenchmarkResult = (name: string, result: Partial<BenchmarkResult>) => {
+  const setBenchmarkResult = (testKey: string, result: Partial<BenchmarkResult>) => {
     setBenchmarkResults(resultsOld => ({
       ...resultsOld,
-      [name]: {
-        ...resultsOld[name],
+      [testKey]: {
+        ...resultsOld[testKey],
         ...result,
       },
     }))
@@ -115,9 +116,9 @@ function App() {
   // throttled progress updater
   const progress = useCallback(
     throttle(
-      (name: string, { i }: { i: number }) => {
+      (testKey: string, { i }: { i: number }) => {
         if (!running.current) return
-        setBenchmarkResult(name, {
+        setBenchmarkResult(testKey, {
           progress: i / iterations,
         })
       },
@@ -130,9 +131,9 @@ function App() {
   // throttled prefill progress updater
   const prefillProgress = useCallback(
     throttle(
-      (name: string, { i }: { i: number }) => {
+      (testKey: string, { i }: { i: number }) => {
         if (!running.current) return
-        setBenchmarkResult(name, {
+        setBenchmarkResult(testKey, {
           prefill: i / prefill,
         })
       },
@@ -147,18 +148,18 @@ function App() {
       Benchmark({
         iterations,
         iteration: progress,
-        preMeasureIteration: (name, { i }) => {
-          prefillProgress(name, { i })
+        preMeasureIteration: (testKey, { i }) => {
+          prefillProgress(testKey, { i })
           if (i === prefill - 1) {
-            prefillProgress.cancel()
-            setBenchmarkResult(name, { prefill: 1 })
+            prefillProgress.flush()
+            setBenchmarkResult(testKey, { prefill: 1 })
           }
         },
         preMeasureIterations: prefill,
-        cycle: (name, { mean }) => {
+        cycle: (testKey, { mean }) => {
           prefillProgress.cancel()
-          progress.cancel()
-          setBenchmarkResult(name, {
+          progress.flush()
+          setBenchmarkResult(testKey, {
             mean,
             prefill: 1,
             progress: 1,
@@ -176,7 +177,7 @@ function App() {
     clear()
   }
 
-  // specs for all tests
+  // specs for all tests for a single database
   const tests: {
     [key: string]: (
       db: Database,
@@ -296,10 +297,10 @@ function App() {
     // add a case for each db to benchmark
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
-      const [name, db] = dbEntries[i]
+      const [dbName, db] = dbEntries[i]
 
       Object.entries(tests).forEach(([testName, testFactory]) => {
-        benchmark.add(testName, testFactory(db, testName))
+        benchmark.add(`${dbName}-${testName}`, testFactory(db, testName))
       })
     }
 
@@ -360,14 +361,20 @@ function App() {
 
       <section style={{ margin: '2em' }}>
         <h2>Results</h2>
+        <h3>Memory</h3>
         <table>
           <tbody>
-            {Object.keys(dbs).map(dbName => (
-              <Fragment key={dbName}>
-                {Object.keys(tests).map(testName => (
-                  <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[testName]} />
-                ))}
-              </Fragment>
+            {Object.keys(tests).map(testName => (
+              <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[`memory-${testName}`]} />
+            ))}
+          </tbody>
+        </table>
+
+        <h3>IndexedDB</h3>
+        <table>
+          <tbody>
+            {Object.keys(tests).map(testName => (
+              <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[`indexedDB-${testName}`]} />
             ))}
           </tbody>
         </table>
