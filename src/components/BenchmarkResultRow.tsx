@@ -49,7 +49,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
         }
         style={{
           color:
-            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 40 ? 'tomato' : undefined,
+            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 10 ? 'tomato' : undefined,
           minWidth: '4.5em',
           textAlign: 'left',
         }}
