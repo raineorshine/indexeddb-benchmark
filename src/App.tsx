@@ -196,6 +196,32 @@ function App() {
       after?: () => void | Promise<void>
     }
   } = {
+    ['get (no prefill)']: (db: Database, testName: string) => ({
+      preMeasure: async i => {
+        if (i > iterations) return
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+        await set(db, storeName, i.toString(), data as DataType)
+      },
+      measure: async i => {
+        await db.get(i.toString(), i.toString())
+      },
+      after: () => teardown(db),
+    }),
+
+    ['set (no prefill)']: (db: Database, testName: string) => ({
+      preMeasure: async i => {
+        if (i > iterations) return
+        const storeName = i.toString()
+        const store = await db.createStore(storeName)
+      },
+      measure: async i => {
+        const storeName = i.toString()
+        await set(db, storeName, i.toString(), data as DataType)
+      },
+      after: () => teardown(db),
+    }),
+
     ['get (readonly)']: (db: Database, testName: string) => ({
       preMeasure: async i => {
         const storeName = i.toString()
