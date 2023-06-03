@@ -240,13 +240,24 @@ function App() {
     }),
 
     ['get | prefill single object store']: (db, testName) => ({
+      before: async () => {
+        await db.createStore(testName)
+      },
       preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, testName, i.toString(), data as DataType)
       },
       measure: async i => {
-        await db.get(i.toString(), i.toString())
+        await db.get(testName, i.toString())
+      },
+      after: async () => teardown(db),
+    }),
+
+    ['set! | prefill single object store']: (db, testName) => ({
+      before: async () => {
+        await db.createStore(testName)
+      },
+      measure: async i => {
+        await set(db, testName, i.toString(), data as DataType)
       },
       after: () => teardown(db),
     }),
@@ -259,18 +270,6 @@ function App() {
       },
       measure: async i => {
         await db.get(i.toString(), i.toString())
-      },
-      after: () => teardown(db),
-    }),
-
-    ['set! | prefill single object store']: (db, testName) => ({
-      preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-      },
-      measure: async i => {
-        const storeName = i.toString()
-        await set(db, storeName, i.toString(), data as DataType)
       },
       after: () => teardown(db),
     }),

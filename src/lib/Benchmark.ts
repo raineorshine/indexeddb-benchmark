@@ -1,12 +1,12 @@
 interface BenchmarkCase {
   /** The name of the case. This is passed to several of the callbacks. */
   name: string
-  /** The function that will be executed and measured once for each iteration. */
-  measure: (i: number) => void | Promise<void>
+  /** Callback invoked once before any iterations of a case (after preMeasure). */
+  before?: (name: string) => void | Promise<void>
   /** The function to be executed once per iteration before measurement starts. Useful for prefilling the database. */
   preMeasure?: (i: number) => void | Promise<void>
-  /** Callback invoked once before any iterations of a case. */
-  before?: (name: string) => void | Promise<void>
+  /** The function that will be executed and measured once for each iteration. */
+  measure: (i: number) => void | Promise<void>
   /** Callback invoked once after all iterations of a case have run. Still called if run is aborted. */
   after?: (name: string) => void | Promise<void>
 }
@@ -83,10 +83,6 @@ const Benchmark = ({
 
   /** Execute and measure all the iterations of a single test. */
   const runCase = async ({ name, before, after, measure }: BenchmarkCase): Promise<void> => {
-    await before?.(name)
-    if (abort) {
-      return after?.(name)
-    }
     for (let i = 0; i < iterations; i++) {
       if (abort || !running) {
         reset()
@@ -94,9 +90,9 @@ const Benchmark = ({
       }
       const start = performance.now()
       await measure(i)
-      if (abort || !running) break
       const end = performance.now()
       const ms = end - start
+      if (abort || !running) break
       totalms += ms
       await iteration?.(name, { i, ms, mean: totalms / (i + 1) })
     }
@@ -104,7 +100,6 @@ const Benchmark = ({
       await cycle?.(name, { mean: totalms / iterations })
       totalms = 0
     }
-    await after?.(name)
   }
 
   const run = async () => {
@@ -114,10 +109,11 @@ const Benchmark = ({
     await beforeAll?.()
 
     for (let i = 0; i < tests.length; i++) {
-      if (abort || !running) break
-      await runPreMeasure(tests[i])
-      if (abort || !running) break
-      await runCase(tests[i])
+      const test = tests[i]
+      await test.before?.(test.name)
+      await runPreMeasure(test)
+      await runCase(test)
+      await test.after?.(test.name)
     }
 
     await afterAll?.()
