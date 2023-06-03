@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import BenchmarkResult from '../types/BenchmarkResult'
+import SkipMode from '../types/SkipMode'
 
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
@@ -19,15 +21,36 @@ const formatMilliseconds = (ms: number) => (ms ? `${numberWithCommas(ms)} ms` : 
 const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : 'very fast')
 
 /** A row of benchmark results for a single case within the results table. */
-function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkResult }) {
+function BenchmarkResultRow({
+  name,
+  result,
+  skip,
+  onToggleSkipped,
+}: {
+  name: string
+  result: BenchmarkResult
+  skip?: boolean
+  onToggleSkipped?: (mode: SkipMode) => void
+}) {
+  const skipStyle = useMemo(() => (skip ? { opacity: 0.2 } : undefined), [skip])
+
   return (
     <tr>
-      <th>{name}</th>
+      <td>
+        <a onClick={() => onToggleSkipped?.('skip')} style={{ padding: '0 0.25em' }}>
+          skip
+        </a>
+        <a onClick={() => onToggleSkipped?.('only')} style={{ padding: '0 0.25em' }}>
+          only
+        </a>
+      </td>
+      <th style={{ textAlign: 'left', ...skipStyle }}>{name}</th>
       <td
         style={{
           minWidth: '2.5em',
           paddingRight: '0.5em',
           color: result?.progress === 1 ? 'gray' : result?.prefill && result.prefill < 1 ? 'goldenrod' : undefined,
+          ...skipStyle,
         }}
       >
         {result?.progress != null
@@ -36,7 +59,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
           ? formatPercentage(result.prefill)
           : ''}
       </td>
-      <td style={{ minWidth: '3.5em' }}>{result?.mean != null ? formatMilliseconds(result.mean) : ''}</td>
+      <td style={{ minWidth: '3.5em', ...skipStyle }}>{result?.mean != null ? formatMilliseconds(result.mean) : ''}</td>
       <td
         title={
           result?.mean && result.mean <= 1
@@ -52,6 +75,7 @@ function BenchmarkResultRow({ name, result }: { name: string; result: BenchmarkR
             result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 10 ? 'tomato' : undefined,
           minWidth: '4.5em',
           textAlign: 'left',
+          ...skipStyle,
         }}
       >
         {result?.mean != null ? formatRate(result?.mean) : ''}

@@ -7,6 +7,7 @@ import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
+import SkipMode from './types/SkipMode'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
@@ -38,10 +39,6 @@ const clearDbs = async (): Promise<void> => {
 /** Inserts a value of the selected DataType into a new object store at a random key. */
 const set = async (db: Database, storeName: string, key: string, data: DataType): Promise<void> =>
   await db.set(storeName, key, generateData(data))
-
-/** Inserts a value of the selected DataType into a new object store at the given key. */
-const setRandom = async (db: Database, storeName: string, data: DataType): Promise<void> =>
-  await db.set(storeName, Math.random().toFixed(16), generateData(data))
 
 const teardown = async (db: Database) => {
   await db.clear()
@@ -86,6 +83,11 @@ function App() {
       return errors
     })
   const hasError = () => Object.keys(errors).length === 0
+
+  const [skipped, setSkipped] = useState<{
+    // key: `${dbName}${testName}`
+    [key: string]: boolean
+  }>({})
 
   const [benchmarkResults, setBenchmarkResults] = useState<{
     // key: `${dbName}${testName}`
@@ -299,7 +301,10 @@ function App() {
       const [dbName, db] = dbEntries[i]
 
       Object.entries(tests).forEach(([testName, testFactory]) => {
-        benchmark.add(`${dbName}-${testName}`, testFactory(db, testName))
+        const testKey = `${dbName}-${testName}`
+        if (!skipped[testKey]) {
+          benchmark.add(testKey, testFactory(db, testName))
+        }
       })
     }
 
@@ -312,6 +317,44 @@ function App() {
   useEffect(() => {
     clearDbs()
   }, [])
+
+  /** Toggles all tests skipped at once. */
+  const toggleAllSkipped = useCallback(
+    (dbName: keyof typeof dbs, value?: boolean) => {
+      setSkipped(skippedOld => {
+        const first = skippedOld[`${dbName}-${Object.keys(tests)[0]}`]
+        return Object.keys(tests).reduce(
+          (accum, testName) => ({ ...accum, [`${dbName}-${testName}`]: value ?? !first }),
+          skippedOld,
+        )
+      })
+    },
+    [tests],
+  )
+
+  /** Toggles a single test skipped. */
+  const toggleSkipped = useCallback(
+    (dbName: keyof typeof dbs, testName: string, value?: boolean) => {
+      const key = `${dbName}-${testName}`
+      setSkipped(skippedOld => ({
+        ...skippedOld,
+        [key]: value ?? !skippedOld[key],
+      }))
+    },
+    [skipped],
+  )
+
+  /** Toggles a test based on a skip mode. If 'skip',  */
+  const toggleSkipMode = useCallback(
+    (dbName: keyof typeof dbs, testName: string) => (mode: SkipMode) => {
+      const valueOld = skipped[`${dbName}-${testName}`]
+      if (mode === 'only') {
+        toggleAllSkipped(dbName, valueOld)
+      }
+      toggleSkipped(dbName, testName)
+    },
+    [skipped],
+  )
 
   return (
     <div
@@ -363,8 +406,21 @@ function App() {
         <h3>Memory</h3>
         <table>
           <tbody>
+            <tr>
+              <td>
+                <a onClick={() => toggleAllSkipped('memory')} style={{ padding: '0 0.5em' }}>
+                  all
+                </a>
+              </td>
+            </tr>
             {Object.keys(tests).map(testName => (
-              <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[`memory-${testName}`]} />
+              <BenchmarkResultRow
+                key={testName}
+                name={testName}
+                result={benchmarkResults[`memory-${testName}`]}
+                skip={skipped[`memory-${testName}`]}
+                onToggleSkipped={toggleSkipMode('memory', testName)}
+              />
             ))}
           </tbody>
         </table>
@@ -372,8 +428,21 @@ function App() {
         <h3>IndexedDB</h3>
         <table>
           <tbody>
+            <tr>
+              <td>
+                <a onClick={() => toggleAllSkipped('indexedDB')} style={{ padding: '0 0.5em' }}>
+                  all
+                </a>
+              </td>
+            </tr>
             {Object.keys(tests).map(testName => (
-              <BenchmarkResultRow key={testName} name={testName} result={benchmarkResults[`indexedDB-${testName}`]} />
+              <BenchmarkResultRow
+                key={testName}
+                name={testName}
+                result={benchmarkResults[`indexedDB-${testName}`]}
+                skip={skipped[`indexedDB-${testName}`]}
+                onToggleSkipped={toggleSkipMode('indexedDB', testName)}
+              />
             ))}
           </tbody>
         </table>
