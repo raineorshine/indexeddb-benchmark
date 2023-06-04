@@ -37,7 +37,7 @@ const clearDbs = async (): Promise<void> => {
 }
 
 /** Inserts a value of the selected DataType into a new object store at a random key. */
-const set = async (db: Database, storeName: string, key: string, data: DataType): Promise<void> =>
+const set = async (db: Database, storeName: string, key: string | number, data: DataType): Promise<void> =>
   await db.set(storeName, key, generateData(data))
 
 const teardown = async (db: Database) => {
@@ -196,10 +196,10 @@ function App() {
         if (i > iterations) return
         const storeName = i.toString()
         const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       measure: async i => {
-        await db.get(i.toString(), i.toString())
+        await db.get(i.toString(), i)
       },
       after: () => teardown(db),
     }),
@@ -212,7 +212,7 @@ function App() {
       },
       measure: async i => {
         const storeName = i.toString()
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       after: () => teardown(db),
     }),
@@ -221,10 +221,10 @@ function App() {
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       measure: async i => {
-        await db.get(i.toString(), i.toString())
+        await db.get(i.toString(), i)
       },
       after: () => teardown(db),
     }),
@@ -233,10 +233,10 @@ function App() {
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       measure: async i => {
-        await db.get(i.toString(), i.toString(), 'readwrite')
+        await db.get(i.toString(), i, 'readwrite')
       },
       after: () => teardown(db),
     }),
@@ -246,10 +246,10 @@ function App() {
         await db.createStore(testName)
       },
       preMeasure: async i => {
-        await set(db, testName, i.toString(), data as DataType)
+        await set(db, testName, i, data as DataType)
       },
       measure: async i => {
-        await db.get(testName, i.toString())
+        await db.get(testName, i)
       },
       after: async () => teardown(db),
     }),
@@ -259,7 +259,7 @@ function App() {
         await db.createStore(testName)
       },
       measure: async i => {
-        await set(db, testName, i.toString(), data as DataType)
+        await set(db, testName, i, data as DataType)
       },
       after: () => teardown(db),
     }),
@@ -268,10 +268,10 @@ function App() {
       preMeasure: async i => {
         const storeName = i.toString()
         const store = await db.createStore(storeName)
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       measure: async i => {
-        await db.get(i.toString(), i.toString())
+        await db.get(i.toString(), i)
       },
       after: () => teardown(db),
     }),
@@ -283,7 +283,7 @@ function App() {
       },
       measure: async i => {
         const storeName = i.toString()
-        await set(db, storeName, i.toString(), data as DataType)
+        await set(db, storeName, i, data as DataType)
       },
       after: () => teardown(db),
     }),

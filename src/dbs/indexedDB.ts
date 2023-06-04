@@ -19,7 +19,7 @@ const runner: Database = {
   },
 
   /** Gets a value at a key from a store. */
-  get: (storeName: string, key: string, mode = 'readonly'): Promise<string> => {
+  get: (storeName: string, key: string | number, mode = 'readonly'): Promise<string> => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
       openRequest.onerror = console.error
@@ -55,7 +55,7 @@ const runner: Database = {
   },
 
   /** Sets a value in a new random object store. */
-  set: async (storeName: string, key: string, value: string): Promise<void> => {
+  set: async (storeName: string, key: string | number, value: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
       openRequest.onerror = console.error
