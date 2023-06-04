@@ -19,13 +19,13 @@ const runner: Database = {
   },
 
   /** Gets a value at a key from a store. */
-  get: (storeName: string, key: string | number, mode = 'readonly'): Promise<string> => {
+  get: (storeName: string, key: string | number, mode: 'readonly' | 'readwrite' = 'readonly'): Promise<string> => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
       openRequest.onerror = console.error
       openRequest.onsuccess = (e: any) => {
         const db: IDBDatabase = e.target.result
-        const tx = db.transaction(storeName)
+        const tx = db.transaction(storeName, mode, { durability: 'relaxed' })
         const store = tx.objectStore(storeName)
         const getRequest = store.get(key)
         getRequest.onerror = console.error
@@ -61,7 +61,7 @@ const runner: Database = {
       openRequest.onerror = console.error
       openRequest.onsuccess = (e: any) => {
         const db: IDBDatabase = e.target.result
-        const tx = db.transaction(storeName, 'readwrite')
+        const tx = db.transaction(storeName, 'readwrite', { durability: 'relaxed' })
         const store = tx.objectStore(storeName)
 
         // add
