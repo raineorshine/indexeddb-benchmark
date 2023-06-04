@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo, crea
 import throttle from 'lodash.throttle'
 import indexedDB from './dbs/indexedDB'
 import memory from './dbs/memory'
+import localStorage from './dbs/localStorage'
 import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
@@ -45,6 +46,16 @@ const teardown = async (db: Database) => {
   await sleep(DELAY_BETWEEN_CASES)
 }
 
+// set up the localStorage store for benchmark settings that should be persisted between sessions
+localStorage.createStore('settings')
+
+const initialSkipped = await localStorage.get('settings', 'skipped')
+
+/** Set a value on localStorage (throttled). */
+const setLocalSetting = throttle(async (key: string, value: any) => {
+  localStorage.set('settings', key, value)
+}, 100)
+
 /** Generates data of a given type. */
 const generateData = (data: DataType): any => {
   const value =
@@ -85,12 +96,12 @@ function App() {
   const hasError = () => Object.keys(errors).length === 0
 
   const [skipped, setSkipped] = useState<{
-    // key: `${dbName}${testName}`
+    // key: `${dbName}-${testName}`
     [key: string]: boolean
-  }>({})
+  }>(initialSkipped)
 
   const [benchmarkResults, setBenchmarkResults] = useState<{
-    // key: `${dbName}${testName}`
+    // key: `${dbName}-${testName}`
     [key: string]: BenchmarkResult
   }>({})
 
@@ -317,6 +328,10 @@ function App() {
   useEffect(() => {
     clearDbs()
   }, [])
+
+  useEffect(() => {
+    setLocalSetting('skipped', skipped)
+  }, [skipped])
 
   /** Toggles all tests skipped at once. */
   const toggleAllSkipped = useCallback(
