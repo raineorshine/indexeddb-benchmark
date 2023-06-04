@@ -1,7 +1,7 @@
 import Database from '../types/Database'
 
 type StoreName = string
-type RecordKey = string
+type RecordKey = string | number
 
 let cache: {
   [key: StoreName]: {
