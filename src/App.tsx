@@ -45,8 +45,6 @@ const teardown = async (db: Database) => {
 // set up the localStorage store for benchmark settings that should be persisted between sessions
 localStorage.createStore('settings')
 
-const initialSkipped: { [key: string]: boolean } = (await localStorage.get('settings', 'skipped')) || {}
-
 /** Set a value on localStorage (throttled). */
 const setLocalSetting = throttle(async (key: string, value: any) => {
   localStorage.set('settings', key, value)
@@ -76,6 +74,7 @@ interface Form {
 
 function App() {
   // benchmark config
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
   const [data, setData] = useState<string>(DEFAULT_DATA)
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
@@ -94,12 +93,21 @@ function App() {
   const [skipped, setSkipped] = useState<{
     // key: `${dbName}-${testName}`
     [key: string]: boolean
-  }>(initialSkipped)
+  }>({})
 
   const [benchmarkResults, setBenchmarkResults] = useState<{
     // key: `${dbName}-${testName}`
     [key: string]: BenchmarkResult
   }>({})
+
+  /** Calls setSkipped and persists the value to local settings. */
+  const setSkippedPersisted = (setter: (skippedOld: typeof skipped) => typeof skipped) => {
+    setSkipped(skippedOld => {
+      const skippedNew = setter(skippedOld)
+      setLocalSetting('skipped', skippedNew)
+      return skippedNew
+    })
+  }
 
   /** Clears the database, benchmark results, and throttled progress timers. Assumes the benchmark is has already ended or been cancelled. */
   const clear = async () => {
@@ -327,16 +335,18 @@ function App() {
 
   useEffect(() => {
     clearDbs()
+    localStorage.get('settings', 'skipped').then(skipped => {
+      if (skipped) {
+        setSkipped(skipped)
+      }
+      setSettingsLoaded(true)
+    })
   }, [])
-
-  useEffect(() => {
-    setLocalSetting('skipped', skipped)
-  }, [skipped])
 
   /** Toggles all tests skipped at once. */
   const toggleAllSkipped = useCallback(
     (dbName: DatabaseName, value?: boolean) => {
-      setSkipped(skippedOld => {
+      setSkippedPersisted(skippedOld => {
         const first = skippedOld[`${dbName}-${Object.keys(tests)[0]}`]
         return Object.keys(tests).reduce(
           (accum, testName) => ({ ...accum, [`${dbName}-${testName}`]: value ?? !first }),
@@ -351,7 +361,7 @@ function App() {
   const toggleSkip = useCallback(
     (dbName: DatabaseName, testName: string, value?: boolean) => {
       const key = `${dbName}-${testName}`
-      setSkipped(skippedOld => ({
+      setSkippedPersisted(skippedOld => ({
         ...skippedOld,
         [key]: value ?? !skippedOld[key],
       }))
@@ -407,19 +417,20 @@ function App() {
       <section style={{ margin: '2em' }}>
         <h2>Results</h2>
 
-        {(Object.keys(dbs) as DatabaseName[]).map(dbName => (
-          <Fragment key={dbName}>
-            <h3>{dbName}</h3>
-            <BenchmarkResultTable
-              benchmarkResults={benchmarkResults}
-              dbName={dbName}
-              onToggleAll={useCallback(() => toggleAllSkipped(dbName), [])}
-              onToggleSkip={useCallback(testName => toggleSkip(dbName, testName), [])}
-              skipped={skipped}
-              testNames={testNames}
-            />
-          </Fragment>
-        ))}
+        {settingsLoaded &&
+          (Object.keys(dbs) as DatabaseName[]).map(dbName => (
+            <Fragment key={dbName}>
+              <h3>{dbName}</h3>
+              <BenchmarkResultTable
+                benchmarkResults={benchmarkResults}
+                dbName={dbName}
+                onToggleAll={() => toggleAllSkipped(dbName)}
+                onToggleSkip={testName => toggleSkip(dbName, testName)}
+                skipped={skipped}
+                testNames={testNames}
+              />
+            </Fragment>
+          ))}
 
         <p>
           <button onClick={run} style={{ margin: '0.5em' }}>
