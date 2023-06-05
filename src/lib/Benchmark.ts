@@ -1,15 +1,4 @@
-interface BenchmarkCase {
-  /** The name of the case. This is passed to several of the callbacks. */
-  name: string
-  /** Callback invoked once before any iterations of a case (after preMeasure). */
-  before?: (name: string) => void | Promise<void>
-  /** The function to be executed once per iteration before measurement starts. Useful for prefilling the database. */
-  preMeasure?: (i: number) => void | Promise<void>
-  /** The function that will be executed and measured once for each iteration. */
-  measure: (i: number) => void | Promise<void>
-  /** Callback invoked once after all iterations of a case have run. Still called if run is aborted. */
-  after?: (name: string) => void | Promise<void>
-}
+import BenchmarkCase from '../types/BenchmarkCase'
 
 /** Asynchronously waits for a number of milliseconds*/
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -87,7 +76,7 @@ const Benchmark = ({
   }
 
   /** Execute and measure all the iterations of a single test. */
-  const runCase = async ({ name, before, after, measure }: BenchmarkCase): Promise<void> => {
+  const runCase = async ({ name, bulkIterations, measure, postMeasure }: BenchmarkCase): Promise<void> => {
     for (let i = 0; i < iterations; i++) {
       if (abort || !running) {
         reset()
@@ -96,10 +85,13 @@ const Benchmark = ({
       const start = performance.now()
       await measure(i)
       const end = performance.now()
-      const ms = end - start
+      // if doing a bulk operation, each iteration performs multiple operations (bulkIterations), so we need to divide the actual ms by bulkIterations to get an average per-operation measurement that is comparable to non-bulk tests
+      const ms = (end - start) / (bulkIterations || 1)
       if (abort || !running) break
       totalms += ms
       await iteration?.(name, { i, ms, mean: totalms / (i + 1) })
+      if (abort || !running) break
+      await postMeasure?.(i)
     }
     if (running && !abort) {
       await cycle?.(name, { mean: totalms / iterations })
@@ -141,15 +133,7 @@ const Benchmark = ({
     },
 
     /** Adds a new test. */
-    add: (
-      name: string,
-      args: {
-        preMeasure?: (i: number) => void | Promise<void>
-        measure: (i: number) => void | Promise<void>
-        before?: (name: string) => void | Promise<void>
-        after?: (name: string) => void | Promise<void>
-      },
-    ) => {
+    add: (name: string, args: Omit<BenchmarkCase, 'name'>) => {
       tests.push({ name, ...args })
     },
 

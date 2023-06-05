@@ -7,6 +7,7 @@ import FormRow from './components/FormRow'
 import BenchmarkResultTable from './components/BenchmarkResultTable'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
+import BenchmarkCase from './types/BenchmarkCase'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
@@ -29,10 +30,6 @@ const clearDbs = async (): Promise<void> => {
     await db.clear()
   }
 }
-
-/** Inserts a value of the selected DataType into a new object store at a random key. */
-const set = async (db: Database, storeName: string, key: string | number, data: DataType): Promise<void> =>
-  await db.set(storeName, key, generateData(data))
 
 // set up the localStorage store for benchmark settings that should be persisted between sessions
 localStorage.createStore('settings')
@@ -187,15 +184,7 @@ function App() {
   const tests: {
     prefill: string
     measure: string
-    spec: (
-      db: Database,
-      testName: string,
-    ) => {
-      measure: (i: number) => void | Promise<void>
-      preMeasure?: (i: number) => void | Promise<void>
-      before?: () => void | Promise<void>
-      after?: () => void | Promise<void>
-    }
+    spec: (db: Database, testName: string) => Omit<BenchmarkCase, 'name'>
   }[] = [
     {
       prefill: '',
@@ -205,7 +194,7 @@ function App() {
           if (i > iterations) return
           const storeName = i.toString()
           const store = await db.createStore(storeName)
-          await set(db, storeName, i, data as DataType)
+          await db.set(storeName, i, generateData(data as DataType))
         },
         measure: async i => {
           await db.get(i.toString(), i)
@@ -225,7 +214,7 @@ function App() {
         },
         measure: async i => {
           const storeName = i.toString()
-          await set(db, storeName, i, data as DataType)
+          await db.set(storeName, i, generateData(data as DataType))
         },
         after: db.clear,
       }),
@@ -238,7 +227,7 @@ function App() {
         preMeasure: async i => {
           const storeName = i.toString()
           const store = await db.createStore(storeName)
-          await set(db, storeName, i, data as DataType)
+          await db.set(storeName, i, generateData(data as DataType))
         },
         measure: async i => {
           await db.get(i.toString(), i)
@@ -254,7 +243,7 @@ function App() {
         preMeasure: async i => {
           const storeName = i.toString()
           const store = await db.createStore(storeName)
-          await set(db, storeName, i, data as DataType)
+          await db.set(storeName, i, generateData(data as DataType))
         },
         measure: async i => {
           await db.get(i.toString(), i, 'readwrite')
@@ -271,7 +260,7 @@ function App() {
           await db.createStore(testName)
         },
         preMeasure: async i => {
-          await set(db, testName, i, data as DataType)
+          await db.set(testName, i, generateData(data as DataType))
         },
         measure: async i => {
           await db.get(testName, i)
@@ -288,7 +277,7 @@ function App() {
           await db.createStore(testName)
         },
         measure: async i => {
-          await set(db, testName, i, data as DataType)
+          await db.set(testName, i, generateData(data as DataType))
         },
         after: db.clear,
       }),
@@ -301,7 +290,7 @@ function App() {
         preMeasure: async i => {
           const storeName = i.toString()
           const store = await db.createStore(storeName)
-          await set(db, storeName, i, data as DataType)
+          await db.set(storeName, i, generateData(data as DataType))
         },
         measure: async i => {
           await db.get(i.toString(), i)
@@ -311,16 +300,24 @@ function App() {
     },
 
     {
-      prefill: 'empty object stores',
-      measure: 'set!',
+      prefill: '',
+      measure: 'bulkSet',
       spec: (db, testName) => ({
-        preMeasure: async i => {
-          const storeName = i.toString()
-          const store = await db.createStore(storeName)
+        bulkIterations: 100,
+        before: async () => {
+          await db.createStore(testName)
         },
         measure: async i => {
-          const storeName = i.toString()
-          await set(db, storeName, i, data as DataType)
+          const keys = Array(100)
+            .fill(0)
+            .map((value, i) => i)
+          const values = keys.map(() => generateData(data as DataType))
+          await db.bulkSet?.(testName, keys, values)
+        },
+        postMeasure: async () => {
+          await db.clear()
+          await db.open?.()
+          await db.createStore(testName)
         },
         after: db.clear,
       }),

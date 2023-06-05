@@ -21,20 +21,12 @@ const runner: Database = {
     dbinstance?.close()
   },
 
-  /** Clears all databases. */
+  /** Closes and deletes he database. */
   clear: async (): Promise<void> => {
     dbinstance?.close()
     dbinstance = null
     dbversion = 1
-    const dbs = await indexedDB.databases()
-    for (let i = 0; i < dbs.length; i++) {
-      const name = dbs[i]?.name
-      if (name) {
-        await indexedDB.deleteDatabase(name)
-      } else {
-        console.error('Unable to delete database.', dbs)
-      }
-    }
+    await indexedDB.deleteDatabase(dbname)
   },
 
   /** Gets a value at a key from a store. */
@@ -69,16 +61,28 @@ const runner: Database = {
   },
 
   /** Sets a value in a new random object store. */
-  set: async (storeName: string, key: string | number, value: string): Promise<void> => {
+  set: async (storeName: string, key: string | number, value: any): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeName, 'readwrite', { durability: 'relaxed' })
       const store = tx.objectStore(storeName)
-
-      // add
       const addRequest = store.add(value, key)
       addRequest.onerror = console.error
       addRequest.onsuccess = () => resolve()
+    })
+  },
+
+  /** Sets more than one value in a random new object store. Faster than set. */
+  bulkSet: async (storeName: string, keys: (string | number)[], values: string[]): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!dbinstance) throw new Error('You have to open the database first.')
+      const tx = dbinstance.transaction(storeName, 'readwrite', { durability: 'relaxed' })
+      const store = tx.objectStore(storeName)
+      keys.forEach((_, i) => {
+        store.add(values[i], keys[i])
+      })
+      tx.oncomplete = () => resolve()
+      tx.onerror = console.error
     })
   },
 }
