@@ -76,7 +76,7 @@ const Benchmark = ({
   }
 
   /** Execute and measure all the iterations of a single test. */
-  const runCase = async ({ name, bulkIterations, measure, postMeasure }: BenchmarkCase): Promise<void> => {
+  const runCase = async ({ name, bulk, measure, postMeasure }: BenchmarkCase): Promise<void> => {
     for (let i = 0; i < iterations; i++) {
       if (abort || !running) {
         reset()
@@ -86,7 +86,7 @@ const Benchmark = ({
       await measure(i)
       const end = performance.now()
       // if doing a bulk operation, each iteration performs multiple operations (bulkIterations), so we need to divide the actual ms by bulkIterations to get an average per-operation measurement that is comparable to non-bulk tests
-      const ms = (end - start) / (bulkIterations || 1)
+      const ms = (end - start) / (bulk ? iterations : 1)
       if (abort || !running) break
       totalms += ms
       await iteration?.(name, { i, ms, mean: totalms / (i + 1) })

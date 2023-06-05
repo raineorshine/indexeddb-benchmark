@@ -1,8 +1,8 @@
 interface BenchmarkCase {
   /** The name of the case. This is passed to several of the callbacks. */
   name: string
-  /** Indicates how many "iterations" of work are performed within a single actual iteration. This is the case when doing bulk operations. The means time will be divided by this in order to output a comparable rate. */
-  bulkIterations?: number
+  /** If true, assumes that measure performs all iterations in one bulk operation. The results will still be averaged over all the benchark's iterations, but the per-operation time will be divided by iterations so that it is comparable with non-bulk tests. */
+  bulk?: boolean
   /** Callback invoked once before any iterations of a case (after preMeasure). */
   before?: (name: string) => void | Promise<void>
   /** The function to be executed once per iteration before measurement starts. Useful for prefilling the database. */

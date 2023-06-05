@@ -303,12 +303,12 @@ function App() {
       prefill: '',
       measure: 'bulkSet',
       spec: (db, testName) => ({
-        bulkIterations: 100,
+        bulk: true,
         before: async () => {
           await db.createStore(testName)
         },
         measure: async i => {
-          const keys = Array(100)
+          const keys = Array(iterations)
             .fill(0)
             .map((value, i) => i)
           const values = keys.map(() => generateData(data as DataType))
