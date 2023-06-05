@@ -1,11 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo, createContext } from 'react'
 import throttle from 'lodash.throttle'
-import indexedDB from './dbs/indexedDB'
-import memory from './dbs/memory'
+import dbs from './dbs/index'
 import localStorage from './dbs/localStorage'
 import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
-import BenchmarkResultRow from './components/BenchmarkResultRow'
 import BenchmarkResultTable from './components/BenchmarkResultTable'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
@@ -25,8 +23,6 @@ const DEFAULT_ITERATIONS = 100
 
 // number of insertions to prefill per benchmark case
 const DEFAULT_PREFILL = 3000
-
-const dbs = { memory, indexedDB }
 
 /** Clears all databases. */
 const clearDbs = async (): Promise<void> => {
@@ -49,7 +45,7 @@ const teardown = async (db: Database) => {
 // set up the localStorage store for benchmark settings that should be persisted between sessions
 localStorage.createStore('settings')
 
-const initialSkipped: { [key: string]: boolean } = await localStorage.get('settings', 'skipped')
+const initialSkipped: { [key: string]: boolean } = (await localStorage.get('settings', 'skipped')) || {}
 
 /** Set a value on localStorage (throttled). */
 const setLocalSetting = throttle(async (key: string, value: any) => {
@@ -412,7 +408,7 @@ function App() {
         <h2>Results</h2>
 
         {(Object.keys(dbs) as (keyof typeof dbs)[]).map(dbName => (
-          <>
+          <Fragment key={dbName}>
             <h3>{dbName}</h3>
             <BenchmarkResultTable
               benchmarkResults={benchmarkResults}
@@ -422,7 +418,7 @@ function App() {
               skipped={skipped}
               testNames={testNames}
             />
-          </>
+          </Fragment>
         ))}
 
         <p>
@@ -431,7 +427,7 @@ function App() {
           </button>
           <button
             onClick={cancel}
-            disabled={Object.keys(benchmarkResults).length === 0}
+            disabled={Object.keys(benchmarkResults).length === 0 && !running.current}
             style={{ backgroundColor: '#1a1a1a', margin: '0.5em' }}
           >
             {running.current ? 'Cancel' : 'Clear'}
