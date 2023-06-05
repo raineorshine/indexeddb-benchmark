@@ -1,7 +1,9 @@
 interface Database {
+  open?: () => Promise<void>
+  close?: () => Promise<void>
   clear: () => Promise<void>
   createStore: (name: string) => Promise<void>
-  get: (storeName: string, key: string | number, mode?: 'readonly' | 'readwrite') => Promise<string | undefined>
+  get: (storeName: string, key: string | number, mode?: 'readonly' | 'readwrite') => Promise<any>
   set: (storeName: string, key: string | number, value: any) => Promise<void>
 }
 

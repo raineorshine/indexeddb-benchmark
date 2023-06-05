@@ -49,7 +49,7 @@ const teardown = async (db: Database) => {
 // set up the localStorage store for benchmark settings that should be persisted between sessions
 localStorage.createStore('settings')
 
-const initialSkipped = await localStorage.get('settings', 'skipped')
+const initialSkipped: { [key: string]: boolean } = await localStorage.get('settings', 'skipped')
 
 /** Set a value on localStorage (throttled). */
 const setLocalSetting = throttle(async (key: string, value: any) => {
@@ -311,12 +311,14 @@ function App() {
     for (let i = 0; i < dbEntries.length; i++) {
       const [dbName, db] = dbEntries[i]
 
+      await db.open?.()
       Object.entries(tests).forEach(([testName, testFactory]) => {
         const testKey = `${dbName}-${testName}`
         if (!skipped[testKey]) {
           benchmark.add(testKey, testFactory(db, testName))
         }
       })
+      await db.close?.()
     }
 
     if (running.current) {
