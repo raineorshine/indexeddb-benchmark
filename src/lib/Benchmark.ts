@@ -11,7 +11,11 @@ interface BenchmarkCase {
   after?: (name: string) => void | Promise<void>
 }
 
+/** Asynchronously waits for a number of milliseconds*/
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const Benchmark = ({
+  delay = 100,
   cycle,
   iteration,
   iterations = 1000,
@@ -20,6 +24,7 @@ const Benchmark = ({
   preMeasureIteration,
   preMeasureIterations,
 }: {
+  delay?: number
   /** Callback invoked after all iterations of a case are run. Not called if run is aborted. */
   cycle?: (
     name: string,
@@ -112,8 +117,10 @@ const Benchmark = ({
       const test = tests[i]
       await test.before?.(test.name)
       await runPreMeasure(test)
+      await sleep(delay)
       await runCase(test)
       await test.after?.(test.name)
+      await sleep(delay)
     }
 
     await afterAll?.()

@@ -10,9 +10,6 @@ import Database from './types/Database'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
-// time to wait between cases
-const DELAY_BETWEEN_CASES = 100
-
 // throttle rate for re-rendering progress percentage
 const PROGRESS_THROTTLE = 33.333
 
@@ -37,11 +34,6 @@ const clearDbs = async (): Promise<void> => {
 const set = async (db: Database, storeName: string, key: string | number, data: DataType): Promise<void> =>
   await db.set(storeName, key, generateData(data))
 
-const teardown = async (db: Database) => {
-  await db.clear()
-  await sleep(DELAY_BETWEEN_CASES)
-}
-
 // set up the localStorage store for benchmark settings that should be persisted between sessions
 localStorage.createStore('settings')
 
@@ -63,9 +55,6 @@ const generateData = (data: DataType): any => {
   }
   return value
 }
-
-/** Asynchronously waits for a number of milliseconds*/
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 interface Form {
   iterations?: string
@@ -216,7 +205,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['set! | no prefill']: (db: Database, testName: string) => ({
@@ -229,7 +218,7 @@ function App() {
         const storeName = i.toString()
         await set(db, storeName, i, data as DataType)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['get | readonly']: (db: Database, testName: string) => ({
@@ -241,7 +230,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['get | readwrite']: (db: Database, testName: string) => ({
@@ -253,7 +242,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i, 'readwrite')
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['get | prefill single object store']: (db, testName) => ({
@@ -266,7 +255,7 @@ function App() {
       measure: async i => {
         await db.get(testName, i)
       },
-      after: async () => teardown(db),
+      after: db.clear,
     }),
 
     ['set! | prefill single object store']: (db, testName) => ({
@@ -276,7 +265,7 @@ function App() {
       measure: async i => {
         await set(db, testName, i, data as DataType)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['get | empty prefilled object stores']: (db, testName) => ({
@@ -288,7 +277,7 @@ function App() {
       measure: async i => {
         await db.get(i.toString(), i)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
 
     ['set! | empty prefilled object stores']: (db, testName) => ({
@@ -300,7 +289,7 @@ function App() {
         const storeName = i.toString()
         await set(db, storeName, i, data as DataType)
       },
-      after: () => teardown(db),
+      after: db.clear,
     }),
   }
 
