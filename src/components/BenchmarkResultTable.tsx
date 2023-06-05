@@ -1,5 +1,6 @@
 import BenchmarkResult from '../types/BenchmarkResult'
 import BenchmarkResultRow from './BenchmarkResultRow'
+import { DatabaseName } from '../dbs'
 
 const BenchmarkResultTable = ({
   benchmarkResults,
@@ -10,7 +11,7 @@ const BenchmarkResultTable = ({
   testNames,
 }: {
   benchmarkResults: { [key: string]: BenchmarkResult }
-  dbName: string
+  dbName: DatabaseName
   onToggleAll: () => void
   onToggleSkip: (testName: string) => void
   skipped: { [key: string]: boolean }

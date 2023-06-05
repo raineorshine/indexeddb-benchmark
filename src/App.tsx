@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, memo, createContext } from 'react'
 import throttle from 'lodash.throttle'
-import dbs from './dbs/index'
+import dbs, { DatabaseName } from './dbs/index'
 import localStorage from './dbs/localStorage'
 import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
@@ -335,7 +335,7 @@ function App() {
 
   /** Toggles all tests skipped at once. */
   const toggleAllSkipped = useCallback(
-    (dbName: keyof typeof dbs, value?: boolean) => {
+    (dbName: DatabaseName, value?: boolean) => {
       setSkipped(skippedOld => {
         const first = skippedOld[`${dbName}-${Object.keys(tests)[0]}`]
         return Object.keys(tests).reduce(
@@ -349,7 +349,7 @@ function App() {
 
   /** Toggles a single test skipped. */
   const toggleSkip = useCallback(
-    (dbName: keyof typeof dbs, testName: string, value?: boolean) => {
+    (dbName: DatabaseName, testName: string, value?: boolean) => {
       const key = `${dbName}-${testName}`
       setSkipped(skippedOld => ({
         ...skippedOld,
@@ -407,7 +407,7 @@ function App() {
       <section style={{ margin: '2em' }}>
         <h2>Results</h2>
 
-        {(Object.keys(dbs) as (keyof typeof dbs)[]).map(dbName => (
+        {(Object.keys(dbs) as DatabaseName[]).map(dbName => (
           <Fragment key={dbName}>
             <h3>{dbName}</h3>
             <BenchmarkResultTable
