@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import BenchmarkResult from '../types/BenchmarkResult'
-import SkipMode from '../types/SkipMode'
 
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
@@ -25,26 +24,25 @@ function BenchmarkResultRow({
   name,
   result,
   skip,
-  onToggleSkipped,
+  onToggleSkip,
 }: {
   name: string
   result: BenchmarkResult
   skip?: boolean
-  onToggleSkipped?: (mode: SkipMode) => void
+  onToggleSkip: () => void
 }) {
   const skipStyle = useMemo(() => (skip ? { opacity: 0.2 } : undefined), [skip])
 
   return (
     <tr>
       <td>
-        <a onClick={() => onToggleSkipped?.('skip')} style={{ padding: '0 0.25em' }}>
-          skip
-        </a>
-        <a onClick={() => onToggleSkipped?.('only')} style={{ padding: '0 0.25em' }}>
-          only
-        </a>
+        <input type='checkbox' onChange={onToggleSkip} checked={!skip} />
       </td>
-      <th style={{ textAlign: 'left', ...skipStyle }}>{name}</th>
+      <th style={{ textAlign: 'left', ...skipStyle }}>
+        <a onClick={onToggleSkip} style={{ color: 'inherit' }}>
+          {name}
+        </a>
+      </th>
       <td
         style={{
           minWidth: '2.5em',

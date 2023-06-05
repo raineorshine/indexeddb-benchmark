@@ -8,7 +8,6 @@ import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
-import SkipMode from './types/SkipMode'
 
 type DataType = 'String(1000)' | 'Uint8Array(1000)'
 
@@ -350,25 +349,13 @@ function App() {
   )
 
   /** Toggles a single test skipped. */
-  const toggleSkipped = useCallback(
+  const toggleSkip = useCallback(
     (dbName: keyof typeof dbs, testName: string, value?: boolean) => {
       const key = `${dbName}-${testName}`
       setSkipped(skippedOld => ({
         ...skippedOld,
         [key]: value ?? !skippedOld[key],
       }))
-    },
-    [skipped],
-  )
-
-  /** Toggles a test based on a skip mode. If 'skip',  */
-  const toggleSkipMode = useCallback(
-    (dbName: keyof typeof dbs, testName: string) => (mode: SkipMode) => {
-      const valueOld = skipped[`${dbName}-${testName}`]
-      if (mode === 'only') {
-        toggleAllSkipped(dbName, valueOld)
-      }
-      toggleSkipped(dbName, testName)
     },
     [skipped],
   )
@@ -425,9 +412,7 @@ function App() {
           <tbody>
             <tr>
               <td>
-                <a onClick={() => toggleAllSkipped('memory')} style={{ padding: '0 0.5em' }}>
-                  all
-                </a>
+                <a onClick={() => toggleAllSkipped('memory')}>all</a>
               </td>
             </tr>
             {Object.keys(tests).map(testName => (
@@ -436,7 +421,7 @@ function App() {
                 name={testName}
                 result={benchmarkResults[`memory-${testName}`]}
                 skip={skipped[`memory-${testName}`]}
-                onToggleSkipped={toggleSkipMode('memory', testName)}
+                onToggleSkip={() => toggleSkip('memory', testName)}
               />
             ))}
           </tbody>
@@ -447,9 +432,7 @@ function App() {
           <tbody>
             <tr>
               <td>
-                <a onClick={() => toggleAllSkipped('indexedDB')} style={{ padding: '0 0.5em' }}>
-                  all
-                </a>
+                <a onClick={() => toggleAllSkipped('indexedDB')}>all</a>
               </td>
             </tr>
             {Object.keys(tests).map(testName => (
@@ -458,7 +441,7 @@ function App() {
                 name={testName}
                 result={benchmarkResults[`indexedDB-${testName}`]}
                 skip={skipped[`indexedDB-${testName}`]}
-                onToggleSkipped={toggleSkipMode('indexedDB', testName)}
+                onToggleSkip={() => toggleSkip('indexedDB', testName)}
               />
             ))}
           </tbody>

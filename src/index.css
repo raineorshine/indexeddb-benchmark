@@ -83,3 +83,8 @@ th {
 td {
   padding-right: 0.5em;
 }
+
+input[type='checkbox'] {
+  cursor: pointer;
+  vertical-align: middle;
+}
