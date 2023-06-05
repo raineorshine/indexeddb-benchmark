@@ -185,7 +185,9 @@ function App() {
 
   // specs for all tests for a single database
   const tests: {
-    [key: string]: (
+    prefill: string
+    measure: string
+    spec: (
       db: Database,
       testName: string,
     ) => {
@@ -194,106 +196,138 @@ function App() {
       before?: () => void | Promise<void>
       after?: () => void | Promise<void>
     }
-  } = {
-    ['get | no prefill']: (db: Database, testName: string) => ({
-      preMeasure: async i => {
-        if (i > iterations) return
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i, data as DataType)
-      },
-      measure: async i => {
-        await db.get(i.toString(), i)
-      },
-      after: db.clear,
-    }),
+  }[] = [
+    {
+      prefill: '',
+      measure: 'get',
+      spec: (db: Database, testName: string) => ({
+        preMeasure: async i => {
+          if (i > iterations) return
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i, data as DataType)
+        },
+        measure: async i => {
+          await db.get(i.toString(), i)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['set! | no prefill']: (db: Database, testName: string) => ({
-      preMeasure: async i => {
-        if (i > iterations) return
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-      },
-      measure: async i => {
-        const storeName = i.toString()
-        await set(db, storeName, i, data as DataType)
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: '',
+      measure: 'set!',
+      spec: (db: Database, testName: string) => ({
+        preMeasure: async i => {
+          if (i > iterations) return
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+        },
+        measure: async i => {
+          const storeName = i.toString()
+          await set(db, storeName, i, data as DataType)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['get | readonly']: (db: Database, testName: string) => ({
-      preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i, data as DataType)
-      },
-      measure: async i => {
-        await db.get(i.toString(), i)
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: 'separate object stores',
+      measure: 'get (readonly)',
+      spec: (db: Database, testName: string) => ({
+        preMeasure: async i => {
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i, data as DataType)
+        },
+        measure: async i => {
+          await db.get(i.toString(), i)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['get | readwrite']: (db: Database, testName: string) => ({
-      preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i, data as DataType)
-      },
-      measure: async i => {
-        await db.get(i.toString(), i, 'readwrite')
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: 'separate object stores',
+      measure: 'get (readwrite)',
+      spec: (db: Database, testName: string) => ({
+        preMeasure: async i => {
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i, data as DataType)
+        },
+        measure: async i => {
+          await db.get(i.toString(), i, 'readwrite')
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['get | prefill single object store']: (db, testName) => ({
-      before: async () => {
-        await db.createStore(testName)
-      },
-      preMeasure: async i => {
-        await set(db, testName, i, data as DataType)
-      },
-      measure: async i => {
-        await db.get(testName, i)
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: 'single object store',
+      measure: 'get',
+      spec: (db, testName) => ({
+        before: async () => {
+          await db.createStore(testName)
+        },
+        preMeasure: async i => {
+          await set(db, testName, i, data as DataType)
+        },
+        measure: async i => {
+          await db.get(testName, i)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['set! | prefill single object store']: (db, testName) => ({
-      before: async () => {
-        await db.createStore(testName)
-      },
-      measure: async i => {
-        await set(db, testName, i, data as DataType)
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: 'single object store',
+      measure: 'set!',
+      spec: (db, testName) => ({
+        before: async () => {
+          await db.createStore(testName)
+        },
+        measure: async i => {
+          await set(db, testName, i, data as DataType)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['get | empty prefilled object stores']: (db, testName) => ({
-      preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-        await set(db, storeName, i, data as DataType)
-      },
-      measure: async i => {
-        await db.get(i.toString(), i)
-      },
-      after: db.clear,
-    }),
+    {
+      prefill: 'empty object stores',
+      measure: 'get',
+      spec: (db, testName) => ({
+        preMeasure: async i => {
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+          await set(db, storeName, i, data as DataType)
+        },
+        measure: async i => {
+          await db.get(i.toString(), i)
+        },
+        after: db.clear,
+      }),
+    },
 
-    ['set! | empty prefilled object stores']: (db, testName) => ({
-      preMeasure: async i => {
-        const storeName = i.toString()
-        const store = await db.createStore(storeName)
-      },
-      measure: async i => {
-        const storeName = i.toString()
-        await set(db, storeName, i, data as DataType)
-      },
-      after: db.clear,
-    }),
-  }
+    {
+      prefill: 'empty object stores',
+      measure: 'set!',
+      spec: (db, testName) => ({
+        preMeasure: async i => {
+          const storeName = i.toString()
+          const store = await db.createStore(storeName)
+        },
+        measure: async i => {
+          const storeName = i.toString()
+          await set(db, storeName, i, data as DataType)
+        },
+        after: db.clear,
+      }),
+    },
+  ]
 
-  const testNames = useMemo(() => Object.keys(tests), [tests])
+  const testKeys = useMemo(() => tests.map(test => `${test.prefill}-${test.measure}`), [tests])
 
   const run = async () => {
     if (running.current) return
@@ -307,10 +341,10 @@ function App() {
       const [dbName, db] = dbEntries[i]
 
       await db.open?.()
-      Object.entries(tests).forEach(([testName, testFactory]) => {
-        const testKey = `${dbName}-${testName}`
+      tests.forEach(({ prefill, measure, spec }) => {
+        const testKey = `${dbName}-${prefill}-${measure}`
         if (!skipped[testKey]) {
-          benchmark.add(testKey, testFactory(db, testName))
+          benchmark.add(testKey, spec(db, `${prefill}-${measure}`))
         }
       })
       await db.close?.()
@@ -336,11 +370,11 @@ function App() {
   const toggleAllSkipped = useCallback(
     (dbName: DatabaseName, value?: boolean) => {
       setSkippedPersisted(skippedOld => {
-        const first = skippedOld[`${dbName}-${Object.keys(tests)[0]}`]
-        return Object.keys(tests).reduce(
-          (accum, testName) => ({ ...accum, [`${dbName}-${testName}`]: value ?? !first }),
-          skippedOld,
-        )
+        const firstSkipped = skippedOld[`${dbName}-${tests[0].prefill}-${tests[0].measure}`]
+        return tests.reduce((accum, test) => {
+          const testKey = `${dbName}-${test.prefill}-${test.measure}`
+          return { ...accum, [testKey]: value ?? !firstSkipped }
+        }, skippedOld)
       })
     },
     [tests],
@@ -348,11 +382,10 @@ function App() {
 
   /** Toggles a single test skipped. */
   const toggleSkip = useCallback(
-    (dbName: DatabaseName, testName: string, value?: boolean) => {
-      const key = `${dbName}-${testName}`
+    (testKey: string, value?: boolean) => {
       setSkippedPersisted(skippedOld => ({
         ...skippedOld,
-        [key]: value ?? !skippedOld[key],
+        [testKey]: value ?? !skippedOld[testKey],
       }))
     },
     [skipped],
@@ -413,10 +446,12 @@ function App() {
               <BenchmarkResultTable
                 benchmarkResults={benchmarkResults}
                 dbName={dbName}
+                iterations={iterations}
                 onToggleAll={() => toggleAllSkipped(dbName)}
-                onToggleSkip={testName => toggleSkip(dbName, testName)}
+                onToggleSkip={toggleSkip}
+                prefill={prefill}
                 skipped={skipped}
-                testNames={testNames}
+                tests={tests}
               />
             </Fragment>
           ))}

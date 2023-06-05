@@ -21,12 +21,14 @@ const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed
 
 /** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({
-  name,
+  prefill,
+  measure,
   result,
   skip,
   onToggleSkip,
 }: {
-  name: string
+  prefill?: string
+  measure: string
   result: BenchmarkResult
   skip?: boolean
   onToggleSkip: () => void
@@ -35,14 +37,19 @@ function BenchmarkResultRow({
 
   return (
     <tr>
-      <td>
+      <td style={{ textAlign: 'left' }}>
         <input type='checkbox' onChange={onToggleSkip} checked={!skip} />
       </td>
-      <th style={{ textAlign: 'left', ...skipStyle }}>
+      <td style={{ textAlign: 'left', ...skipStyle }}>
         <a onClick={onToggleSkip} style={{ color: 'inherit' }}>
-          {name}
+          {prefill}
         </a>
-      </th>
+      </td>
+      <td style={{ textAlign: 'left', ...skipStyle }}>
+        <a onClick={onToggleSkip} style={{ color: 'inherit' }}>
+          {measure}
+        </a>
+      </td>
       <td
         style={{
           minWidth: '2.5em',

@@ -5,34 +5,48 @@ import { DatabaseName } from '../dbs'
 const BenchmarkResultTable = ({
   benchmarkResults,
   dbName,
+  iterations,
   onToggleAll,
   onToggleSkip,
+  prefill,
   skipped,
-  testNames,
+  tests,
 }: {
   benchmarkResults: { [key: string]: BenchmarkResult }
   dbName: DatabaseName
+  iterations: number
   onToggleAll: () => void
-  onToggleSkip: (testName: string) => void
+  onToggleSkip: (key: string) => void
+  prefill: number
   skipped: { [key: string]: boolean }
-  testNames: string[]
+  tests: { prefill: string; measure: string }[]
 }) => (
   <table>
-    <tbody>
-      <tr>
-        <td>
+    <thead>
+      <tr style={{ fontWeight: 'bold' }}>
+        <td style={{ paddingRight: '1.5em' }}>
           <a onClick={onToggleAll}>all</a>
         </td>
+        <td style={{ textAlign: 'left' }}>Prefill ({prefill})</td>
+        <td style={{ textAlign: 'left' }}>Measure ({iterations})</td>
+        <td></td>
+        <td>Result</td>
       </tr>
-      {testNames.map(testName => (
-        <BenchmarkResultRow
-          key={testName}
-          name={testName}
-          result={benchmarkResults[`${dbName}-${testName}`]}
-          skip={skipped[`${dbName}-${testName}`]}
-          onToggleSkip={() => onToggleSkip(testName)}
-        />
-      ))}
+    </thead>
+    <tbody>
+      {tests.map(test => {
+        const testKey = `${dbName}-${test.prefill}-${test.measure}`
+        return (
+          <BenchmarkResultRow
+            key={testKey}
+            prefill={test.prefill}
+            measure={test.measure}
+            result={benchmarkResults[testKey]}
+            skip={skipped[testKey]}
+            onToggleSkip={() => onToggleSkip(testKey)}
+          />
+        )
+      })}
     </tbody>
   </table>
 )
