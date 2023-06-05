@@ -6,6 +6,7 @@ import localStorage from './dbs/localStorage'
 import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
 import BenchmarkResultRow from './components/BenchmarkResultRow'
+import BenchmarkResultTable from './components/BenchmarkResultTable'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
 
@@ -299,6 +300,8 @@ function App() {
     }),
   }
 
+  const testNames = useMemo(() => Object.keys(tests), [tests])
+
   const run = async () => {
     if (running.current) return
 
@@ -407,45 +410,20 @@ function App() {
 
       <section style={{ margin: '2em' }}>
         <h2>Results</h2>
-        <h3>Memory</h3>
-        <table>
-          <tbody>
-            <tr>
-              <td>
-                <a onClick={() => toggleAllSkipped('memory')}>all</a>
-              </td>
-            </tr>
-            {Object.keys(tests).map(testName => (
-              <BenchmarkResultRow
-                key={testName}
-                name={testName}
-                result={benchmarkResults[`memory-${testName}`]}
-                skip={skipped[`memory-${testName}`]}
-                onToggleSkip={() => toggleSkip('memory', testName)}
-              />
-            ))}
-          </tbody>
-        </table>
 
-        <h3>IndexedDB</h3>
-        <table>
-          <tbody>
-            <tr>
-              <td>
-                <a onClick={() => toggleAllSkipped('indexedDB')}>all</a>
-              </td>
-            </tr>
-            {Object.keys(tests).map(testName => (
-              <BenchmarkResultRow
-                key={testName}
-                name={testName}
-                result={benchmarkResults[`indexedDB-${testName}`]}
-                skip={skipped[`indexedDB-${testName}`]}
-                onToggleSkip={() => toggleSkip('indexedDB', testName)}
-              />
-            ))}
-          </tbody>
-        </table>
+        {(Object.keys(dbs) as (keyof typeof dbs)[]).map(dbName => (
+          <>
+            <h3>{dbName}</h3>
+            <BenchmarkResultTable
+              benchmarkResults={benchmarkResults}
+              dbName={dbName}
+              onToggleAll={useCallback(() => toggleAllSkipped(dbName), [])}
+              onToggleSkip={useCallback(testName => toggleSkip(dbName, testName), [])}
+              skipped={skipped}
+              testNames={testNames}
+            />
+          </>
+        ))}
 
         <p>
           <button onClick={run} style={{ margin: '0.5em' }}>
