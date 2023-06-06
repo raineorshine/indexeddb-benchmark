@@ -44,6 +44,21 @@ const runner: Database = {
   },
 
   /** Gets one or more values for the given keys from a store. */
+  getByIndex: (storeName, indexName, key, mode = 'readonly') => {
+    return new Promise((resolve, reject) => {
+      if (!dbinstance) throw new Error('You have to open the database first.')
+      const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
+      const store = tx.objectStore(storeName)
+      const index = store.index(indexName)
+      const req = index.get(key)
+      req.onerror = console.error
+      req.onsuccess = (e: any) => {
+        resolve(e.target.result)
+      }
+    })
+  },
+
+  /** Gets all values in a store. */
   getAll: (storeName, mode = 'readonly') => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
@@ -89,6 +104,25 @@ const runner: Database = {
         names.forEach(name => {
           db.createObjectStore(name)
         })
+      }
+      openRequest.onsuccess = (e: any) => {
+        dbinstance = e.target.result
+        resolve()
+      }
+    })
+  },
+
+  /** Creates an index on a record property. */
+  createIndex: async (storeName, keyPath) => {
+    return new Promise((resolve, reject) => {
+      if (!dbinstance) throw new Error('You have to open the database first.')
+      dbinstance?.close()
+      const openRequest = indexedDB.open(dbname, ++dbversion)
+      openRequest.onerror = console.error
+      openRequest.onupgradeneeded = (e: any) => {
+        const tx: IDBTransaction = e.target.transaction
+        const store = tx.objectStore(storeName)
+        store.createIndex(keyPath, keyPath)
       }
       openRequest.onsuccess = (e: any) => {
         dbinstance = e.target.result
