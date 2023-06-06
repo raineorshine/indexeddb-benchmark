@@ -43,15 +43,18 @@ const runner: Database = {
     })
   },
 
-  /** Creates a new store. */
-  createStore: async (storeName: string): Promise<void> => {
+  /** Creates one or more new store. */
+  createStore: async (storeNames: string | string[]): Promise<void> => {
+    const names = Array.isArray(storeNames) ? storeNames : [storeNames]
     return new Promise((resolve, reject) => {
       dbinstance?.close()
       const openRequest = indexedDB.open(dbname, ++dbversion)
       openRequest.onerror = console.error
       openRequest.onupgradeneeded = (e: any) => {
         const db: IDBDatabase = e.target.result
-        db.createObjectStore(storeName)
+        names.forEach(name => {
+          db.createObjectStore(name)
+        })
       }
       openRequest.onsuccess = (e: any) => {
         dbinstance = e.target.result
@@ -73,12 +76,13 @@ const runner: Database = {
   },
 
   /** Sets more than one value in a random new object store. Faster than set. */
-  bulkSet: async (storeName: string, keys: (string | number)[], values: string[]): Promise<void> => {
+  bulkSet: async (storeNames: string | string[], keys: (string | number)[], values: string[]): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
-      const tx = dbinstance.transaction(storeName, 'readwrite', { durability: 'relaxed' })
-      const store = tx.objectStore(storeName)
+      const tx = dbinstance.transaction(storeNames, 'readwrite', { durability: 'relaxed' })
       keys.forEach((_, i) => {
+        const storeName = Array.isArray(storeNames) ? storeNames[i] : storeNames
+        const store = tx.objectStore(storeName)
         store.add(values[i], keys[i])
       })
       tx.oncomplete = () => resolve()
