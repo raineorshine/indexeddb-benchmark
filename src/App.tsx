@@ -205,11 +205,57 @@ function App() {
 
     {
       prefill: '',
-      measure: 'set!',
+      measure: 'bulkGet',
+      spec: (db: Database, testName: string) => ({
+        bulk: true,
+        before: async () => {
+          const store = await db.createStore(testName)
+          const rawData = generateData(data as PayloadType)
+          const keys = Array(iterations)
+            .fill(0)
+            .map((_, i) => i)
+          const values = keys.map(() => rawData)
+          await db.bulkSet(testName, keys, values)
+        },
+        measure: async i => {
+          const keys = Array(iterations)
+            .fill(0)
+            .map((value, i) => i)
+          await db.bulkGet?.(testName, keys)
+        },
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: '',
+      measure: 'set',
       spec: (db: Database, testName: string) => ({
         before: () => db.createStore(testName),
         measure: async i => {
           await db.set(testName, i, generateData(data as PayloadType))
+        },
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: '',
+      measure: 'bulkSet',
+      spec: (db, testName) => ({
+        bulk: true,
+        before: () => db.createStore(testName),
+        measure: async i => {
+          const keys = Array(iterations)
+            .fill(0)
+            .map((value, i) => i)
+          const values = keys.map(() => generateData(data as PayloadType))
+          await db.bulkSet?.(testName, keys, values)
+        },
+        postMeasure: async () => {
+          await db.clear()
+          await db.open?.()
+          await db.createStore(testName)
         },
         after: db.clear,
       }),
@@ -224,7 +270,7 @@ function App() {
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
-          const storeNames = keys.map(key => key.toString())
+          const storeNames = Object.keys(keys)
           const values = keys.map(() => rawData)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
@@ -243,12 +289,66 @@ function App() {
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
-          const storeNames = keys.map(key => key.toString())
+          const storeNames = Object.keys(keys)
           const values = keys.map(() => rawData)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
         },
         measure: i => db.get(i.toString(), i, 'readwrite'),
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: 'separate object stores',
+      measure: 'bulkGet (readonly)',
+      spec: (db: Database, testName: string) => ({
+        bulk: true,
+        before: async () => {
+          const store = await db.createStore(testName)
+          const rawData = generateData(data as PayloadType)
+          const keys = Array(prefill)
+            .fill(0)
+            .map((_, i) => i)
+          const storeNames = Object.keys(keys)
+          const values = keys.map(() => rawData)
+          await db.createStore(storeNames)
+          await db.bulkSet(storeNames, keys, values)
+        },
+        measure: async i => {
+          const keys = Array(iterations)
+            .fill(0)
+            .map((value, i) => i)
+          const storeNames = Object.keys(keys)
+          await db.bulkGet?.(storeNames, keys, 'readonly')
+        },
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: 'separate object stores',
+      measure: 'bulkGet (readwrite)',
+      spec: (db: Database, testName: string) => ({
+        bulk: true,
+        before: async () => {
+          const store = await db.createStore(testName)
+          const rawData = generateData(data as PayloadType)
+          const keys = Array(prefill)
+            .fill(0)
+            .map((_, i) => i)
+          const storeNames = Object.keys(keys)
+          const values = keys.map(() => rawData)
+          await db.createStore(storeNames)
+          await db.bulkSet(storeNames, keys, values)
+        },
+        measure: async i => {
+          const keys = Array(iterations)
+            .fill(0)
+            .map((value, i) => i)
+          const storeNames = Object.keys(keys)
+          await db.bulkGet?.(storeNames, keys, 'readwrite')
+        },
         after: db.clear,
       }),
     },
@@ -273,32 +373,10 @@ function App() {
 
     {
       prefill: 'single object store',
-      measure: 'set!',
+      measure: 'set',
       spec: (db, testName) => ({
         before: () => db.createStore(testName),
         measure: i => db.set(testName, i, generateData(data as PayloadType)),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: '',
-      measure: 'bulkSet',
-      spec: (db, testName) => ({
-        bulk: true,
-        before: () => db.createStore(testName),
-        measure: async i => {
-          const keys = Array(iterations)
-            .fill(0)
-            .map((value, i) => i)
-          const values = keys.map(() => generateData(data as PayloadType))
-          await db.bulkSet?.(testName, keys, values)
-        },
-        postMeasure: async () => {
-          await db.clear()
-          await db.open?.()
-          await db.createStore(testName)
-        },
         after: db.clear,
       }),
     },

@@ -19,6 +19,12 @@ const runner: Database = {
   get: async (storeName, key) => {
     return cache[storeName][key]
   },
+  bulkGet: async (storeNames, keys, values) => {
+    return keys.map((key, i) => {
+      const storeName = Array.isArray(storeNames) ? storeNames[i] : storeNames
+      return cache[storeName][keys[i]]
+    })
+  },
   set: async (storeName, key, value) => {
     cache[storeName][key] = value
   },

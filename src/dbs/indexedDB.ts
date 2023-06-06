@@ -43,6 +43,26 @@ const runner: Database = {
     })
   },
 
+  /** Gets one or more values for the given keys from a store. */
+  bulkGet: (storeNames, keys, mode) => {
+    return new Promise((resolve, reject) => {
+      if (!dbinstance) throw new Error('You have to open the database first.')
+      const tx = dbinstance.transaction(storeNames, 'readwrite', { durability: 'relaxed' })
+      const results: any[] = []
+      keys.forEach((key, i) => {
+        const storeName = Array.isArray(storeNames) ? storeNames[i] : storeNames
+        const store = tx.objectStore(storeName)
+        const getRequest = store.get(key)
+        getRequest.onerror = console.error
+        getRequest.onsuccess = (e: any) => {
+          results.push(e.target.result)
+        }
+      })
+      tx.onerror = console.error
+      tx.oncomplete = () => resolve(results)
+    })
+  },
+
   /** Creates one or more new store. */
   createStore: async storeNames => {
     const names = Array.isArray(storeNames) ? storeNames : [storeNames]

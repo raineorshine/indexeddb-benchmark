@@ -15,6 +15,9 @@ const runner: Database = {
     const store = localStorage.getItem(storeName)
     return store ? JSON.parse(store)[key.toString()] : undefined
   },
+  bulkGet: async () => {
+    throw new Error('Not Implemented')
+  },
   set: async (storeName, key, value) => {
     const store = JSON.parse(localStorage.getItem(key.toString()) || '{}')
     localStorage.setItem(
