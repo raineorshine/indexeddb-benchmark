@@ -8,13 +8,12 @@ import BenchmarkResultTable from './components/BenchmarkResultTable'
 import BenchmarkResult from './types/BenchmarkResult'
 import Database from './types/Database'
 import BenchmarkCase from './types/BenchmarkCase'
-
-type DataType = 'String(1000)' | 'Uint8Array(1000)'
+import PayloadType from './types/PayloadType'
 
 // throttle rate for re-rendering progress percentage
 const PROGRESS_THROTTLE = 33.333
 
-const DEFAULT_DATA: DataType = 'Uint8Array(1000)'
+const DEFAULT_DATA: PayloadType = 'Uint8Array(1000)'
 
 // number of insertions per benchmark case
 const DEFAULT_ITERATIONS = 100
@@ -40,7 +39,7 @@ const setLocalSetting = throttle(async (key: string, value: any) => {
 }, 100)
 
 /** Generates data of a given type. */
-const generateData = (data: DataType): any => {
+const generateData = (data: PayloadType): any => {
   const value =
     data === 'String(1000)'
       ? new Array(1000).fill(0).join('')
@@ -62,7 +61,7 @@ function App() {
   // benchmark config
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
-  const [data, setData] = useState<string>(DEFAULT_DATA)
+  const [data, setData] = useState<PayloadType>(DEFAULT_DATA)
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
   const running = useRef<boolean>(false)
 
@@ -192,7 +191,7 @@ function App() {
       spec: (db: Database, testName: string) => ({
         before: async () => {
           const store = await db.createStore(testName)
-          const rawData = generateData(data as DataType)
+          const rawData = generateData(data as PayloadType)
           const keys = Array(iterations)
             .fill(0)
             .map((_, i) => i)
@@ -210,7 +209,7 @@ function App() {
       spec: (db: Database, testName: string) => ({
         before: () => db.createStore(testName),
         measure: async i => {
-          await db.set(testName, i, generateData(data as DataType))
+          await db.set(testName, i, generateData(data as PayloadType))
         },
         after: db.clear,
       }),
@@ -221,7 +220,7 @@ function App() {
       measure: 'get (readonly)',
       spec: (db: Database, testName: string) => ({
         before: async () => {
-          const rawData = generateData(data as DataType)
+          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
@@ -240,7 +239,7 @@ function App() {
       measure: 'get (readwrite)',
       spec: (db: Database, testName: string) => ({
         before: async () => {
-          const rawData = generateData(data as DataType)
+          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
@@ -259,7 +258,7 @@ function App() {
       measure: 'get',
       spec: (db, testName) => ({
         before: async () => {
-          const rawData = generateData(data as DataType)
+          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
@@ -277,7 +276,7 @@ function App() {
       measure: 'set!',
       spec: (db, testName) => ({
         before: () => db.createStore(testName),
-        measure: i => db.set(testName, i, generateData(data as DataType)),
+        measure: i => db.set(testName, i, generateData(data as PayloadType)),
         after: db.clear,
       }),
     },
@@ -292,7 +291,7 @@ function App() {
           const keys = Array(iterations)
             .fill(0)
             .map((value, i) => i)
-          const values = keys.map(() => generateData(data as DataType))
+          const values = keys.map(() => generateData(data as PayloadType))
           await db.bulkSet?.(testName, keys, values)
         },
         postMeasure: async () => {

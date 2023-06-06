@@ -1,4 +1,5 @@
 import { useState, memo } from 'react'
+import PayloadType from '../types/PayloadType'
 
 const FormRow = memo(function FormRow({
   defaultValue,
@@ -11,8 +12,8 @@ const FormRow = memo(function FormRow({
   defaultValue?: string
   description: string
   label: string
-  options?: string[]
-  set: (value: string) => void
+  options?: PayloadType[]
+  set: (value: PayloadType) => void
   type?: 'number' | 'radio'
 }) {
   const [selected, setSelected] = useState<string | undefined>(defaultValue ?? options?.[0])
