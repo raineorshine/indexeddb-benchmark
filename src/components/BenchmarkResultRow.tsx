@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import BenchmarkResult from '../types/BenchmarkResult'
+import { getScale } from 'color2k'
 
 /** Formats a number with commas in the thousands place. */
 const numberWithCommas = (n: number | string, decimals = 3) => {
@@ -18,6 +19,12 @@ const formatMilliseconds = (ms: number) => (ms ? `${numberWithCommas(ms)} ms` : 
 
 /** Formats milliseconds in terms of iterations per second. */
 const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed(1))}/sec` : 'very fast')
+
+/** Generates a scaling function that gives a color a certain % along a gradient. */
+const colorScale = getScale('lightgreen', 'goldenrod', 'tomato')
+
+/** Generates a color from red to yellow to green for a number 1–100,000. */
+const rateColor = (ms: number) => colorScale(ms / 5)
 
 /** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({
@@ -76,8 +83,7 @@ function BenchmarkResultRow({
             : 'very fast'
         }
         style={{
-          color:
-            result?.mean && result.mean <= 1 ? 'lightgreen' : result?.mean && result.mean > 10 ? 'tomato' : undefined,
+          color: result?.mean ? rateColor(result.mean) : undefined,
           minWidth: '4.5em',
           textAlign: 'left',
           ...skipStyle,
