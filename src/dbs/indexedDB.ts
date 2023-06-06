@@ -6,7 +6,7 @@ let dbversion = 1
 
 const runner: Database = {
   /** Open a global database connection. */
-  open: async (): Promise<void> => {
+  open: async () => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
       openRequest.onerror = console.error
@@ -17,12 +17,12 @@ const runner: Database = {
     })
   },
 
-  close: async (): Promise<void> => {
+  close: async () => {
     dbinstance?.close()
   },
 
   /** Closes and deletes he database. */
-  clear: async (): Promise<void> => {
+  clear: async () => {
     dbinstance?.close()
     dbinstance = null
     dbversion = 1
@@ -30,7 +30,7 @@ const runner: Database = {
   },
 
   /** Gets a value at a key from a store. */
-  get: (storeName: string, key: string | number, mode: 'readonly' | 'readwrite' = 'readonly'): Promise<string> => {
+  get: (storeName, key, mode = 'readonly') => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
@@ -44,7 +44,7 @@ const runner: Database = {
   },
 
   /** Creates one or more new store. */
-  createStore: async (storeNames: string | string[]): Promise<void> => {
+  createStore: async storeNames => {
     const names = Array.isArray(storeNames) ? storeNames : [storeNames]
     return new Promise((resolve, reject) => {
       dbinstance?.close()
@@ -64,7 +64,7 @@ const runner: Database = {
   },
 
   /** Sets a value in a new random object store. */
-  set: async (storeName: string, key: string | number, value: any): Promise<void> => {
+  set: async (storeName, key, value) => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeName, 'readwrite', { durability: 'relaxed' })
@@ -76,7 +76,7 @@ const runner: Database = {
   },
 
   /** Sets more than one value in a random new object store. Faster than set. */
-  bulkSet: async (storeNames: string | string[], keys: (string | number)[], values: string[]): Promise<void> => {
+  bulkSet: async (storeNames, keys, values) => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeNames, 'readwrite', { durability: 'relaxed' })

@@ -1,11 +1,8 @@
 import Database from '../types/Database'
 
-type StoreName = string
-type RecordKey = string | number
-
 const runner: Database = {
   clear: async () => localStorage.clear(),
-  createStore: async (storeNames: string | string[]) => {
+  createStore: async storeNames => {
     const names = Array.isArray(storeNames) ? storeNames : [storeNames]
     names.forEach(name => {
       const store = localStorage.getItem(name)
@@ -14,11 +11,11 @@ const runner: Database = {
       }
     })
   },
-  get: async (storeName: string, key: RecordKey): Promise<any> => {
+  get: async (storeName, key) => {
     const store = localStorage.getItem(storeName)
     return store ? JSON.parse(store)[key.toString()] : undefined
   },
-  set: async (storeName: string, key: RecordKey, value: any): Promise<void> => {
+  set: async (storeName, key, value) => {
     const store = JSON.parse(localStorage.getItem(key.toString()) || '{}')
     localStorage.setItem(
       storeName,
