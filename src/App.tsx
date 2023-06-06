@@ -150,26 +150,28 @@ function App() {
     clear()
   }
 
+  const testStoreName = 'test'
+
   // specs for all tests for a single database
   const tests: {
     prefill: string
     measure: string
-    spec: (db: Database, testName: string) => Omit<BenchmarkCase, 'name'>
+    spec: (db: Database) => Omit<BenchmarkCase, 'name'>
   }[] = [
     {
       prefill: '',
       measure: 'get',
-      spec: (db: Database, testName: string) => ({
+      spec: (db: Database) => ({
         before: async () => {
           // only set iterations, since this test case has no prefill
           const keys = Array(iterations)
             .fill(0)
             .map((_, i) => i)
           const values = keys.map(() => payload)
-          await db.createStore(testName)
-          await db.bulkSet(testName, keys, values)
+          await db.createStore(testStoreName)
+          await db.bulkSet(testStoreName, keys, values)
         },
-        measure: i => db.get(testName, i),
+        measure: i => db.get(testStoreName, i),
         after: db.clear,
       }),
     },
@@ -177,7 +179,7 @@ function App() {
     {
       prefill: '',
       measure: 'bulkGet',
-      spec: (db: Database, testName: string) => ({
+      spec: db => ({
         bulk: true,
         before: async () => {
           // only set iterations, since this test case has no prefill
@@ -185,14 +187,14 @@ function App() {
             .fill(0)
             .map((_, i) => i)
           const values = keys.map(() => payload)
-          await db.createStore(testName)
-          await db.bulkSet(testName, keys, values)
+          await db.createStore(testStoreName)
+          await db.bulkSet(testStoreName, keys, values)
         },
         measure: async i => {
           const keys = Array(iterations)
             .fill(0)
             .map((value, i) => i)
-          await db.bulkGet?.(testName, keys)
+          await db.bulkGet?.(testStoreName, keys)
         },
         after: db.clear,
       }),
@@ -201,9 +203,9 @@ function App() {
     {
       prefill: '',
       measure: 'set',
-      spec: (db: Database, testName: string) => ({
-        before: () => db.createStore(testName),
-        measure: i => db.set(testName, i, generateData(data)),
+      spec: db => ({
+        before: () => db.createStore(testStoreName),
+        measure: i => db.set(testStoreName, i, generateData(data)),
         after: db.clear,
       }),
     },
@@ -211,20 +213,20 @@ function App() {
     {
       prefill: '',
       measure: 'bulkSet',
-      spec: (db, testName) => ({
+      spec: db => ({
         bulk: true,
-        before: () => db.createStore(testName),
+        before: () => db.createStore(testStoreName),
         measure: async i => {
           const keys = Array(iterations)
             .fill(0)
             .map((value, i) => i)
           const values = keys.map(() => generateData(data))
-          await db.bulkSet?.(testName, keys, values)
+          await db.bulkSet?.(testStoreName, keys, values)
         },
         postMeasure: async () => {
           await db.clear()
           await db.open?.()
-          await db.createStore(testName)
+          await db.createStore(testStoreName)
         },
         after: db.clear,
       }),
@@ -233,16 +235,16 @@ function App() {
     {
       prefill: 'records',
       measure: 'get',
-      spec: (db, testName) => ({
+      spec: db => ({
         before: async () => {
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
           const values = keys.map(() => payload)
-          await db.createStore(testName)
-          await db.bulkSet(testName, keys, values)
+          await db.createStore(testStoreName)
+          await db.bulkSet(testStoreName, keys, values)
         },
-        measure: i => db.get(testName, i),
+        measure: i => db.get(testStoreName, i),
         after: db.clear,
       }),
     },
@@ -250,9 +252,9 @@ function App() {
     {
       prefill: 'records',
       measure: 'set',
-      spec: (db, testName) => ({
-        before: () => db.createStore(testName),
-        measure: i => db.set(testName, i, generateData(data)),
+      spec: db => ({
+        before: () => db.createStore(testStoreName),
+        measure: i => db.set(testStoreName, i, generateData(data)),
         after: db.clear,
       }),
     },
@@ -260,7 +262,7 @@ function App() {
     {
       prefill: 'object stores',
       measure: 'get (readonly)',
-      spec: (db: Database, testName: string) => ({
+      spec: (db: Database) => ({
         before: async () => {
           const keys = Array(prefill)
             .fill(0)
@@ -278,7 +280,7 @@ function App() {
     {
       prefill: 'object stores',
       measure: 'get (readwrite)',
-      spec: (db: Database, testName: string) => ({
+      spec: (db: Database) => ({
         before: async () => {
           const keys = Array(prefill)
             .fill(0)
@@ -296,7 +298,7 @@ function App() {
     {
       prefill: 'object stores',
       measure: 'bulkGet (readonly)',
-      spec: (db: Database, testName: string) => ({
+      spec: (db: Database) => ({
         bulk: true,
         before: async () => {
           const keys = Array(prefill)
@@ -321,7 +323,7 @@ function App() {
     {
       prefill: 'object stores',
       measure: 'bulkGet (readwrite)',
-      spec: (db: Database, testName: string) => ({
+      spec: (db: Database) => ({
         bulk: true,
         before: async () => {
           const keys = Array(prefill)
