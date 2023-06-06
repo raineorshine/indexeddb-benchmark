@@ -34,49 +34,18 @@ const clearDbs = async (): Promise<void> => {
 localStorage.createStore('settings')
 
 /** Set a value on localStorage (throttled). */
-const setLocalSetting = throttle(async (key: string, value: any) => {
+const setLocalSetting = throttle((key: string, value: any): void => {
   localStorage.set('settings', key, value)
 }, 100)
 
-/** Generates data of a given type. */
-const generateData = (data: PayloadType): any => {
-  const value =
-    data === 'String(1000)'
-      ? new Array(1000).fill(0).join('')
-      : data === 'Uint8Array(1000)'
-      ? new Uint8Array(1000)
-      : null
-  if (value === null) {
-    throw new Error('Unsupported data type: ' + data)
-  }
-  return value
-}
-
-interface Form {
-  iterations?: string
-  prefill?: string
-}
-
 function App() {
-  // benchmark config
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
   const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
   const [data, setData] = useState<PayloadType>(DEFAULT_DATA)
   const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
   const running = useRef<boolean>(false)
 
-  const [errors, setErrors] = useState<Form>({})
-  const setError = (key: keyof Form, value?: string) =>
-    setErrors(errors => ({ ...errors, [key]: value ?? `invalid ${key}` }))
-  const clearError = (key: keyof Form, value: string) =>
-    setErrors(errors => {
-      delete errors[key]
-      return errors
-    })
-  const hasError = () => Object.keys(errors).length === 0
-
   const [skipped, setSkipped] = useState<{
-    // key: `${dbName}-${testName}`
     [key: string]: boolean
   }>({})
 
@@ -84,6 +53,8 @@ function App() {
     // key: `${dbName}-${testName}`
     [key: string]: BenchmarkResult
   }>({})
+
+  const payload = useMemo(() => generateData(data), [data])
 
   /** Calls setSkipped and persists the value to local settings. */
   const setSkippedPersisted = (setter: (skippedOld: typeof skipped) => typeof skipped) => {
@@ -190,12 +161,12 @@ function App() {
       measure: 'get',
       spec: (db: Database, testName: string) => ({
         before: async () => {
-          const store = await db.createStore(testName)
-          const rawData = generateData(data as PayloadType)
+          // only set iterations, since this test case has no prefill
           const keys = Array(iterations)
             .fill(0)
             .map((_, i) => i)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
+          await db.createStore(testName)
           await db.bulkSet(testName, keys, values)
         },
         measure: i => db.get(testName, i),
@@ -209,12 +180,12 @@ function App() {
       spec: (db: Database, testName: string) => ({
         bulk: true,
         before: async () => {
-          const store = await db.createStore(testName)
-          const rawData = generateData(data as PayloadType)
+          // only set iterations, since this test case has no prefill
           const keys = Array(iterations)
             .fill(0)
             .map((_, i) => i)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
+          await db.createStore(testName)
           await db.bulkSet(testName, keys, values)
         },
         measure: async i => {
@@ -232,9 +203,7 @@ function App() {
       measure: 'set',
       spec: (db: Database, testName: string) => ({
         before: () => db.createStore(testName),
-        measure: async i => {
-          await db.set(testName, i, generateData(data as PayloadType))
-        },
+        measure: i => db.set(testName, i, generateData(data)),
         after: db.clear,
       }),
     },
@@ -249,7 +218,7 @@ function App() {
           const keys = Array(iterations)
             .fill(0)
             .map((value, i) => i)
-          const values = keys.map(() => generateData(data as PayloadType))
+          const values = keys.map(() => generateData(data))
           await db.bulkSet?.(testName, keys, values)
         },
         postMeasure: async () => {
@@ -262,16 +231,42 @@ function App() {
     },
 
     {
-      prefill: 'separate object stores',
+      prefill: 'records',
+      measure: 'get',
+      spec: (db, testName) => ({
+        before: async () => {
+          const keys = Array(prefill)
+            .fill(0)
+            .map((_, i) => i)
+          const values = keys.map(() => payload)
+          await db.createStore(testName)
+          await db.bulkSet(testName, keys, values)
+        },
+        measure: i => db.get(testName, i),
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: 'records',
+      measure: 'set',
+      spec: (db, testName) => ({
+        before: () => db.createStore(testName),
+        measure: i => db.set(testName, i, generateData(data)),
+        after: db.clear,
+      }),
+    },
+
+    {
+      prefill: 'object stores',
       measure: 'get (readonly)',
       spec: (db: Database, testName: string) => ({
         before: async () => {
-          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
           const storeNames = Object.keys(keys)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
         },
@@ -281,16 +276,15 @@ function App() {
     },
 
     {
-      prefill: 'separate object stores',
+      prefill: 'object stores',
       measure: 'get (readwrite)',
       spec: (db: Database, testName: string) => ({
         before: async () => {
-          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
           const storeNames = Object.keys(keys)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
         },
@@ -300,18 +294,16 @@ function App() {
     },
 
     {
-      prefill: 'separate object stores',
+      prefill: 'object stores',
       measure: 'bulkGet (readonly)',
       spec: (db: Database, testName: string) => ({
         bulk: true,
         before: async () => {
-          const store = await db.createStore(testName)
-          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
           const storeNames = Object.keys(keys)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
         },
@@ -327,18 +319,16 @@ function App() {
     },
 
     {
-      prefill: 'separate object stores',
+      prefill: 'object stores',
       measure: 'bulkGet (readwrite)',
       spec: (db: Database, testName: string) => ({
         bulk: true,
         before: async () => {
-          const store = await db.createStore(testName)
-          const rawData = generateData(data as PayloadType)
           const keys = Array(prefill)
             .fill(0)
             .map((_, i) => i)
           const storeNames = Object.keys(keys)
-          const values = keys.map(() => rawData)
+          const values = keys.map(() => payload)
           await db.createStore(storeNames)
           await db.bulkSet(storeNames, keys, values)
         },
@@ -349,34 +339,6 @@ function App() {
           const storeNames = Object.keys(keys)
           await db.bulkGet?.(storeNames, keys, 'readwrite')
         },
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'single object store',
-      measure: 'get',
-      spec: (db, testName) => ({
-        before: async () => {
-          const rawData = generateData(data as PayloadType)
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const values = keys.map(() => rawData)
-          await db.createStore(testName)
-          await db.bulkSet(testName, keys, values)
-        },
-        measure: i => db.get(testName, i),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'single object store',
-      measure: 'set',
-      spec: (db, testName) => ({
-        before: () => db.createStore(testName),
-        measure: i => db.set(testName, i, generateData(data as PayloadType)),
         after: db.clear,
       }),
     },
