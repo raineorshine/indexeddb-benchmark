@@ -44,6 +44,20 @@ const runner: Database = {
   },
 
   /** Gets one or more values for the given keys from a store. */
+  getAll: (storeName, mode = 'readonly') => {
+    return new Promise((resolve, reject) => {
+      if (!dbinstance) throw new Error('You have to open the database first.')
+      const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
+      const store = tx.objectStore(storeName)
+      const req = store.getAll()
+      req.onerror = console.error
+      req.onsuccess = (e: any) => {
+        resolve(e.target.result)
+      }
+    })
+  },
+
+  /** Gets one or more values for the given keys from a store. */
   bulkGet: (storeNames, keys, mode) => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
