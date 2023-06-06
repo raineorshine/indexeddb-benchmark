@@ -6,8 +6,7 @@ import Benchmark from './lib/Benchmark'
 import FormRow from './components/FormRow'
 import BenchmarkResultTable from './components/BenchmarkResultTable'
 import BenchmarkResult from './types/BenchmarkResult'
-import Database from './types/Database'
-import BenchmarkCase from './types/BenchmarkCase'
+import generateTests from './tests'
 import PayloadType from './types/PayloadType'
 
 // throttle rate for re-rendering progress percentage
@@ -53,8 +52,6 @@ function App() {
     // key: `${dbName}-${testName}`
     [key: string]: BenchmarkResult
   }>({})
-
-  const payload = useMemo(() => generateData(data), [data])
 
   /** Calls setSkipped and persists the value to local settings. */
   const setSkippedPersisted = (setter: (skippedOld: typeof skipped) => typeof skipped) => {
@@ -144,207 +141,13 @@ function App() {
     [iterations, prefill],
   )
 
+  const tests = useMemo(() => generateTests({ data, iterations, prefill }), [data, iterations, prefill])
+
   /** Cancels the current run and clears the benchmark results. */
   const cancel = async () => {
     benchmark.cancel()
     clear()
   }
-
-  const testStoreName = 'test'
-
-  // specs for all tests for a single database
-  const tests: {
-    prefill: string
-    measure: string
-    spec: (db: Database) => Omit<BenchmarkCase, 'name'>
-  }[] = [
-    {
-      prefill: '',
-      measure: 'get',
-      spec: (db: Database) => ({
-        before: async () => {
-          // only set iterations, since this test case has no prefill
-          const keys = Array(iterations)
-            .fill(0)
-            .map((_, i) => i)
-          const values = keys.map(() => payload)
-          await db.createStore(testStoreName)
-          await db.bulkSet(testStoreName, keys, values)
-        },
-        measure: i => db.get(testStoreName, i),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: '',
-      measure: 'bulkGet',
-      spec: db => ({
-        bulk: true,
-        before: async () => {
-          // only set iterations, since this test case has no prefill
-          const keys = Array(iterations)
-            .fill(0)
-            .map((_, i) => i)
-          const values = keys.map(() => payload)
-          await db.createStore(testStoreName)
-          await db.bulkSet(testStoreName, keys, values)
-        },
-        measure: async i => {
-          const keys = Array(iterations)
-            .fill(0)
-            .map((value, i) => i)
-          await db.bulkGet?.(testStoreName, keys)
-        },
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: '',
-      measure: 'set',
-      spec: db => ({
-        before: () => db.createStore(testStoreName),
-        measure: i => db.set(testStoreName, i, generateData(data)),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: '',
-      measure: 'bulkSet',
-      spec: db => ({
-        bulk: true,
-        before: () => db.createStore(testStoreName),
-        measure: async i => {
-          const keys = Array(iterations)
-            .fill(0)
-            .map((value, i) => i)
-          const values = keys.map(() => generateData(data))
-          await db.bulkSet?.(testStoreName, keys, values)
-        },
-        postMeasure: async () => {
-          await db.clear()
-          await db.open?.()
-          await db.createStore(testStoreName)
-        },
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'records',
-      measure: 'get',
-      spec: db => ({
-        before: async () => {
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const values = keys.map(() => payload)
-          await db.createStore(testStoreName)
-          await db.bulkSet(testStoreName, keys, values)
-        },
-        measure: i => db.get(testStoreName, i),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'records',
-      measure: 'set',
-      spec: db => ({
-        before: () => db.createStore(testStoreName),
-        measure: i => db.set(testStoreName, i, generateData(data)),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'object stores',
-      measure: 'get (readonly)',
-      spec: (db: Database) => ({
-        before: async () => {
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const storeNames = Object.keys(keys)
-          const values = keys.map(() => payload)
-          await db.createStore(storeNames)
-          await db.bulkSet(storeNames, keys, values)
-        },
-        measure: i => db.get(i.toString(), i, 'readonly'),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'object stores',
-      measure: 'get (readwrite)',
-      spec: (db: Database) => ({
-        before: async () => {
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const storeNames = Object.keys(keys)
-          const values = keys.map(() => payload)
-          await db.createStore(storeNames)
-          await db.bulkSet(storeNames, keys, values)
-        },
-        measure: i => db.get(i.toString(), i, 'readwrite'),
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'object stores',
-      measure: 'bulkGet (readonly)',
-      spec: (db: Database) => ({
-        bulk: true,
-        before: async () => {
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const storeNames = Object.keys(keys)
-          const values = keys.map(() => payload)
-          await db.createStore(storeNames)
-          await db.bulkSet(storeNames, keys, values)
-        },
-        measure: async i => {
-          const keys = Array(iterations)
-            .fill(0)
-            .map((value, i) => i)
-          const storeNames = Object.keys(keys)
-          await db.bulkGet?.(storeNames, keys, 'readonly')
-        },
-        after: db.clear,
-      }),
-    },
-
-    {
-      prefill: 'object stores',
-      measure: 'bulkGet (readwrite)',
-      spec: (db: Database) => ({
-        bulk: true,
-        before: async () => {
-          const keys = Array(prefill)
-            .fill(0)
-            .map((_, i) => i)
-          const storeNames = Object.keys(keys)
-          const values = keys.map(() => payload)
-          await db.createStore(storeNames)
-          await db.bulkSet(storeNames, keys, values)
-        },
-        measure: async i => {
-          const keys = Array(iterations)
-            .fill(0)
-            .map((value, i) => i)
-          const storeNames = Object.keys(keys)
-          await db.bulkGet?.(storeNames, keys, 'readwrite')
-        },
-        after: db.clear,
-      }),
-    },
-  ]
 
   const run = async () => {
     if (running.current) return
@@ -355,13 +158,13 @@ function App() {
     // add a case for each db to benchmark
     const dbEntries = Object.entries(dbs)
     for (let i = 0; i < dbEntries.length; i++) {
-      const [dbName, db] = dbEntries[i]
+      const [dbname, db] = dbEntries[i]
 
       await db.open?.()
-      tests.forEach(({ prefill, measure, spec }) => {
-        const testKey = `${dbName}-${prefill}-${measure}`
+      tests[dbname].forEach(({ prefill, measure, spec }) => {
+        const testKey = `${dbname}-${prefill}-${measure}`
         if (!skipped[testKey]) {
-          benchmark.add(testKey, spec(db, `${prefill}-${measure}`))
+          benchmark.add(testKey, spec)
         }
       })
       await db.close?.()
@@ -385,11 +188,11 @@ function App() {
 
   /** Toggles all tests skipped at once. */
   const toggleAllSkipped = useCallback(
-    (dbName: DatabaseName, value?: boolean) => {
+    (dbname: DatabaseName, value?: boolean) => {
       setSkippedPersisted(skippedOld => {
-        const firstSkipped = skippedOld[`${dbName}-${tests[0].prefill}-${tests[0].measure}`]
-        return tests.reduce((accum, test) => {
-          const testKey = `${dbName}-${test.prefill}-${test.measure}`
+        const firstSkipped = skippedOld[`${dbname}-${tests[dbname][0].prefill}-${tests[dbname][0].measure}`]
+        return tests[dbname].reduce((accum, test) => {
+          const testKey = `${dbname}-${test.prefill}-${test.measure}`
           return { ...accum, [testKey]: value ?? !firstSkipped }
         }, skippedOld)
       })
@@ -457,18 +260,18 @@ function App() {
         <h2>Results</h2>
 
         {settingsLoaded &&
-          (Object.keys(dbs) as DatabaseName[]).map(dbName => (
-            <Fragment key={dbName}>
-              <h3>{dbName}</h3>
+          (Object.keys(dbs) as DatabaseName[]).map(dbname => (
+            <Fragment key={dbname}>
+              <h3>{dbname}</h3>
               <BenchmarkResultTable
                 benchmarkResults={benchmarkResults}
-                dbName={dbName}
+                dbName={dbname}
                 iterations={iterations}
-                onToggleAll={() => toggleAllSkipped(dbName)}
+                onToggleAll={() => toggleAllSkipped(dbname)}
                 onToggleSkip={toggleSkip}
                 prefill={prefill}
                 skipped={skipped}
-                tests={tests}
+                tests={tests[dbname]}
               />
             </Fragment>
           ))}
