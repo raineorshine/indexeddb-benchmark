@@ -24,7 +24,7 @@ const formatRate = (ms: number) => (ms ? `${numberWithCommas((1000 / ms).toFixed
 const colorScale = getScale('lightgreen', 'goldenrod', 'tomato')
 
 /** Generates a color from red to yellow to green for a number 1–100,000. */
-const rateColor = (ms: number) => colorScale(ms / 5)
+const rateColor = (ms: number) => colorScale(ms / 7)
 
 /** A row of benchmark results for a single case within the results table. */
 function BenchmarkResultRow({
