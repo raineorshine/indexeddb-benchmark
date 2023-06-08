@@ -84,7 +84,7 @@ const generateTests = ({
         measure: 'set',
         spec: {
           before: () => db.createStore(testStoreName),
-          measure: i => db.set(testStoreName, i, generateData(data)),
+          measure: i => db.set(testStoreName, i, payload),
           after: db.clear,
         },
       },
@@ -99,7 +99,7 @@ const generateTests = ({
             const keys = Array(iterations)
               .fill(0)
               .map((value, i) => i)
-            const values = keys.map(() => generateData(data))
+            const values = keys.map(() => payload)
             await db.bulkSet?.(testStoreName, keys, values)
           },
           postMeasure: async () => {
@@ -178,7 +178,7 @@ const generateTests = ({
         measure: 'set',
         spec: {
           before: () => db.createStore(testStoreName),
-          measure: i => db.set(testStoreName, i, generateData(data)),
+          measure: i => db.set(testStoreName, i, payload),
           after: db.clear,
         },
       },
