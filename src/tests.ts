@@ -153,6 +153,22 @@ const generateTests = ({
 
         {
           prefill: 'records',
+          measure: 'bulkGet',
+          spec: {
+            bulk: iterations,
+            before: prefillRecords,
+            measure: async i => {
+              const keys = Array(iterations)
+                .fill(0)
+                .map(() => randRange(iterations))
+              await db.bulkGet?.(testStoreName, keys, 'readonly')
+            },
+            after: db.clear,
+          },
+        },
+
+        {
+          prefill: 'records',
           measure: 'getByIndex',
           spec: {
             before: async () => {
