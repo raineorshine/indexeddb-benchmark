@@ -9,7 +9,7 @@ const runner: Database = {
   open: async () => {
     return new Promise((resolve, reject) => {
       const openRequest = indexedDB.open(dbname)
-      openRequest.onerror = console.error
+      openRequest.onerror = reject
       openRequest.onsuccess = (e: any) => {
         dbinstance = e.target.result
         resolve()
@@ -36,7 +36,7 @@ const runner: Database = {
       const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
       const store = tx.objectStore(storeName)
       const getRequest = store.get(key)
-      getRequest.onerror = console.error
+      getRequest.onerror = reject
       getRequest.onsuccess = () => {
         resolve(getRequest.result)
       }
@@ -51,7 +51,7 @@ const runner: Database = {
       const store = tx.objectStore(storeName)
       const index = store.index(indexName)
       const req = index.get(key)
-      req.onerror = console.error
+      req.onerror = reject
       req.onsuccess = (e: any) => {
         resolve(e.target.result)
       }
@@ -65,7 +65,7 @@ const runner: Database = {
       const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
       const store = tx.objectStore(storeName)
       const req = store.getAll()
-      req.onerror = console.error
+      req.onerror = reject
       req.onsuccess = (e: any) => {
         resolve(e.target.result)
       }
@@ -82,12 +82,12 @@ const runner: Database = {
         const storeName = Array.isArray(storeNames) ? storeNames[i] : storeNames
         const store = tx.objectStore(storeName)
         const getRequest = store.get(key)
-        getRequest.onerror = console.error
+        getRequest.onerror = reject
         getRequest.onsuccess = (e: any) => {
           results.push(e.target.result)
         }
       })
-      tx.onerror = console.error
+      tx.onerror = reject
       tx.oncomplete = () => resolve(results)
     })
   },
@@ -98,7 +98,7 @@ const runner: Database = {
     return new Promise((resolve, reject) => {
       dbinstance?.close()
       const openRequest = indexedDB.open(dbname, ++dbversion)
-      openRequest.onerror = console.error
+      openRequest.onerror = reject
       openRequest.onupgradeneeded = (e: any) => {
         const db: IDBDatabase = e.target.result
         names.forEach(name => {
@@ -118,7 +118,7 @@ const runner: Database = {
       if (!dbinstance) throw new Error('You have to open the database first.')
       dbinstance?.close()
       const openRequest = indexedDB.open(dbname, ++dbversion)
-      openRequest.onerror = console.error
+      openRequest.onerror = reject
       openRequest.onupgradeneeded = (e: any) => {
         const tx: IDBTransaction = e.target.transaction
         const store = tx.objectStore(storeName)
@@ -138,7 +138,7 @@ const runner: Database = {
       const tx = dbinstance.transaction(storeName, 'readwrite', { durability: 'relaxed' })
       const store = tx.objectStore(storeName)
       const addRequest = store.add(value, key)
-      addRequest.onerror = console.error
+      addRequest.onerror = reject
       addRequest.onsuccess = () => resolve()
     })
   },
@@ -153,8 +153,8 @@ const runner: Database = {
         const store = tx.objectStore(storeName)
         store.add(values[i], keys[i])
       })
+      tx.onerror = reject
       tx.oncomplete = () => resolve()
-      tx.onerror = console.error
     })
   },
 }
