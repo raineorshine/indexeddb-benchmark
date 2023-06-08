@@ -14,11 +14,11 @@ const PROGRESS_THROTTLE = 33.333
 
 const DEFAULT_DATA: PayloadType = 'Uint8Array(1000)'
 
-// number of insertions per benchmark case
-const DEFAULT_ITERATIONS = 100
-
 // number of insertions to prefill per benchmark case
 const DEFAULT_PREFILL = 3000
+
+// number of insertions per benchmark case
+const DEFAULT_ITERATIONS = 10
 
 /** Clears all databases. */
 const clearDbs = async (): Promise<void> => {
