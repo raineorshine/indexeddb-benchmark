@@ -76,7 +76,7 @@ const FormRow = memo(function FormRow({
               color: 'gray',
               margin: '0.5em 1em 1em',
               marginTop: type === 'radio' ? 0 : '0.5em',
-              maxWidth: '16em',
+              maxWidth: '20em',
               textAlign: 'left',
             }}
           >

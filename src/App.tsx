@@ -12,14 +12,6 @@ import PayloadType from './types/PayloadType'
 // throttle rate for re-rendering progress percentage
 const PROGRESS_THROTTLE = 33.333
 
-const DEFAULT_DATA: PayloadType = 'Uint8Array(1000)'
-
-// number of insertions to prefill per benchmark case
-const DEFAULT_PREFILL = 3000
-
-// number of insertions per benchmark case
-const DEFAULT_ITERATIONS = 10
-
 /** Clears all databases. */
 const clearDbs = async (): Promise<void> => {
   const dbEntries = Object.entries(dbs)
@@ -39,9 +31,10 @@ const setLocalSetting = throttle((key: string, value: any): void => {
 
 function App() {
   const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false)
-  const [iterations, setIterations] = useState<number>(DEFAULT_ITERATIONS)
-  const [data, setData] = useState<PayloadType>(DEFAULT_DATA)
-  const [prefill, setPrefill] = useState<number>(DEFAULT_PREFILL)
+  const [iterations, setIterations] = useState<number>(100)
+  const [limit, setLimit] = useState<number>(10)
+  const [payloadType, setPayloadType] = useState<PayloadType>('Uint8Array(1000)')
+  const [total, setTotal] = useState<number>(10000)
   const running = useRef<boolean>(false)
 
   const [skipped, setSkipped] = useState<{
@@ -66,7 +59,7 @@ function App() {
   const clear = async () => {
     running.current = false
     progress.cancel()
-    prefillProgress.cancel()
+    beforeProgress.cancel()
     benchmark.clear()
     setBenchmarkResults({})
     await clearDbs()
@@ -98,19 +91,19 @@ function App() {
     [iterations],
   )
 
-  // throttled prefill progress updater
-  const prefillProgress = useCallback(
+  // throttled before progress updater
+  const beforeProgress = useCallback(
     throttle(
       (testKey: string, { i }: { i: number }) => {
         if (!running.current) return
         setBenchmarkResult(testKey, {
-          prefill: i / prefill,
+          beforeProgress: i / total,
         })
       },
       PROGRESS_THROTTLE,
       { leading: true, trailing: false },
     ),
-    [prefill],
+    [total],
   )
 
   const benchmark = useMemo(
@@ -119,29 +112,32 @@ function App() {
         iterations,
         iteration: progress,
         preMeasureIteration: (testKey, { i }) => {
-          prefillProgress(testKey, { i })
-          if (i === prefill - 1) {
-            prefillProgress.flush()
-            setBenchmarkResult(testKey, { prefill: 1 })
+          beforeProgress(testKey, { i })
+          if (i === total - 1) {
+            beforeProgress.flush()
+            setBenchmarkResult(testKey, { beforeProgress: 1 })
           }
         },
-        preMeasureIterations: prefill,
+        preMeasureIterations: total,
         cycle: (testKey, { mean }) => {
-          prefillProgress.cancel()
+          beforeProgress.cancel()
           progress.flush()
           setBenchmarkResult(testKey, {
             mean,
-            prefill: 1,
+            beforeProgress: 1,
             progress: 1,
           })
         },
         beforeAll: clearDbs,
         afterAll: clearDbs,
       }),
-    [iterations, prefill],
+    [iterations, total],
   )
 
-  const tests = useMemo(() => generateTests({ data, iterations, prefill }), [data, iterations, prefill])
+  const tests = useMemo(
+    () => generateTests({ payloadType, iterations, limit, total }),
+    [payloadType, limit, iterations, total],
+  )
 
   /** Cancels the current run and clears the benchmark results. */
   const cancel = async () => {
@@ -232,22 +228,28 @@ function App() {
           <table style={{ marginLeft: '3.6em', width: '100%' }}>
             <tbody>
               <FormRow
-                defaultValue={DEFAULT_DATA}
-                description='Type of data to insert each iteration.'
+                defaultValue={payloadType}
+                description='Data stored in a single record.'
                 label='Data'
                 options={useMemo(() => ['String(1000)', 'Uint8Array(1000)'], [])}
-                set={setData}
+                set={setPayloadType}
                 type='radio'
               />
               <FormRow
-                defaultValue={DEFAULT_PREFILL.toString()}
-                description='Number of insertions to execute before starting measurements.'
-                label='Prefill'
-                set={useCallback(value => setPrefill(parseInt(value, 10)), [])}
+                defaultValue={total.toString()}
+                description='Total number of records to insert.'
+                label='Total'
+                set={useCallback(value => setTotal(parseInt(value, 10)), [])}
               />
               <FormRow
-                defaultValue={DEFAULT_ITERATIONS.toString()}
-                description='Number of insertions to execute and measure after the database is prefilled.'
+                defaultValue={limit.toString()}
+                description='Number of records to query per iteration.'
+                label='Limit'
+                set={useCallback(value => setLimit(parseInt(value, 10)), [])}
+              />
+              <FormRow
+                defaultValue={iterations.toString()}
+                description='Number of iterations to measure.'
                 label='Iterations'
                 set={useCallback((value: string) => setIterations(parseInt(value, 10)), [])}
               />
@@ -269,7 +271,7 @@ function App() {
                 iterations={iterations}
                 onToggleAll={() => toggleAllSkipped(dbname)}
                 onToggleSkip={toggleSkip}
-                prefill={prefill}
+                total={total}
                 skipped={skipped}
                 tests={tests[dbname]}
               />

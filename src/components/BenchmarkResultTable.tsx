@@ -8,7 +8,7 @@ const BenchmarkResultTable = ({
   iterations,
   onToggleAll,
   onToggleSkip,
-  prefill,
+  total,
   skipped,
   tests,
 }: {
@@ -17,7 +17,7 @@ const BenchmarkResultTable = ({
   iterations: number
   onToggleAll: () => void
   onToggleSkip: (key: string) => void
-  prefill: number
+  total: number
   skipped: { [key: string]: boolean }
   tests: { prefill: string; measure: string }[]
 }) => (
@@ -27,7 +27,7 @@ const BenchmarkResultTable = ({
         <td style={{ paddingRight: '1.5em' }}>
           <a onClick={onToggleAll}>all</a>
         </td>
-        <td style={{ textAlign: 'left' }}>Prefill ({prefill})</td>
+        <td style={{ textAlign: 'left' }}>Prefill ({total})</td>
         <td style={{ textAlign: 'left' }}>Measure ({iterations})</td>
         <td></td>
         <td>Result</td>

@@ -61,14 +61,19 @@ function BenchmarkResultRow({
         style={{
           minWidth: '2.5em',
           paddingRight: '0.5em',
-          color: result?.progress === 1 ? 'gray' : result?.prefill && result.prefill < 1 ? 'goldenrod' : undefined,
+          color:
+            result?.progress === 1
+              ? 'gray'
+              : result?.beforeProgress && result.beforeProgress < 1
+              ? 'goldenrod'
+              : undefined,
           ...skipStyle,
         }}
       >
         {result?.progress != null
           ? formatPercentage(result.progress)
-          : result?.prefill
-          ? formatPercentage(result.prefill)
+          : result?.beforeProgress
+          ? formatPercentage(result.beforeProgress)
           : ''}
       </td>
       <td style={{ minWidth: '3.5em', ...skipStyle }}>{result?.mean != null ? formatMilliseconds(result.mean) : ''}</td>

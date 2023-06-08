@@ -44,13 +44,13 @@ const runner: Database = {
   },
 
   /** Gets one or more values for the given keys from a store. */
-  getByIndex: (storeName, indexName, key, mode = 'readonly') => {
+  getAllByIndex: (storeName, indexName, key, mode = 'readonly') => {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeName, mode, { durability: 'relaxed' })
       const store = tx.objectStore(storeName)
       const index = store.index(indexName)
-      const req = index.get(key)
+      const req = index.getAll(key)
       req.onerror = reject
       req.onsuccess = (e: any) => {
         resolve(e.target.result)

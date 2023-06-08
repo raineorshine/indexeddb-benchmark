@@ -1,6 +1,6 @@
 interface BenchmarkResult {
   mean?: number
-  prefill?: number
+  beforeProgress?: number
   progress?: number
 }
 
