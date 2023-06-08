@@ -77,14 +77,14 @@ const runner: Database = {
     return new Promise((resolve, reject) => {
       if (!dbinstance) throw new Error('You have to open the database first.')
       const tx = dbinstance.transaction(storeNames, 'readwrite', { durability: 'relaxed' })
-      const results: any[] = []
+      const results: any[] = Array(keys.length).fill(undefined)
       keys.forEach((key, i) => {
         const storeName = Array.isArray(storeNames) ? storeNames[i] : storeNames
         const store = tx.objectStore(storeName)
         const getRequest = store.get(key)
         getRequest.onerror = reject
         getRequest.onsuccess = (e: any) => {
-          results.push(e.target.result)
+          results[i] = e.target.result
         }
       })
       tx.onerror = reject
