@@ -5,6 +5,9 @@ import PayloadType from './types/PayloadType'
 
 const testStoreName = 'test'
 
+/** Calculates a random number from 0 to n. */
+const randRange = (n: number) => Math.floor(Math.random() * n)
+
 /** Generates data of a given type. */
 const generateData = (data: PayloadType) => {
   const value =
@@ -43,9 +46,7 @@ const generateTests = ({
         spec: {
           before: async () => {
             // only set iterations, since this test case has no prefill
-            const keys = Array(iterations)
-              .fill(0)
-              .map((_, i) => i)
+            const keys = Object.keys(Array(iterations).fill(0))
             const values = keys.map(() => payload)
             await db.createStore(testStoreName)
             await db.bulkSet(testStoreName, keys, values)
@@ -62,9 +63,7 @@ const generateTests = ({
           bulk: iterations,
           before: async () => {
             // only set iterations, since this test case has no prefill
-            const keys = Array(iterations)
-              .fill(0)
-              .map((_, i) => i)
+            const keys = Object.keys(Array(iterations).fill(0))
             const values = keys.map(() => payload)
             await db.createStore(testStoreName)
             await db.bulkSet(testStoreName, keys, values)
@@ -188,13 +187,15 @@ const generateTests = ({
         measure: 'get (readonly)',
         spec: {
           before: async () => {
-            const keys = Array(prefill)
-              .fill(0)
-              .map((_, i) => i)
-            const storeNames = Object.keys(keys)
+            // unique store names
+            const storeNames = Object.keys(Array(prefill).fill(0))
+            // store names parallel to keys (i.e. prefill * measure)
+            const setStoreNames = storeNames.flatMap((storeName, i) => Array(iterations).fill(storeName))
+            // set [iterations] values in each store, with keys 0..iterations-1
+            const keys = setStoreNames.map((_, i) => i % iterations)
             const values = keys.map(() => payload)
             await db.createStore(storeNames)
-            await db.bulkSet(storeNames, keys, values)
+            await db.bulkSet(setStoreNames, keys, values)
           },
           measure: i => db.get(i.toString(), i, 'readonly'),
           after: db.clear,
@@ -206,13 +207,15 @@ const generateTests = ({
         measure: 'get (readwrite)',
         spec: {
           before: async () => {
-            const keys = Array(prefill)
-              .fill(0)
-              .map((_, i) => i)
-            const storeNames = Object.keys(keys)
+            // unique store names
+            const storeNames = Object.keys(Array(prefill).fill(0))
+            // store names parallel to keys (i.e. prefill * measure)
+            const setStoreNames = storeNames.flatMap((storeName, i) => Array(iterations).fill(storeName))
+            // set [iterations] values in each store, with keys 0..iterations-1
+            const keys = setStoreNames.map((_, i) => i % iterations)
             const values = keys.map(() => payload)
             await db.createStore(storeNames)
-            await db.bulkSet(storeNames, keys, values)
+            await db.bulkSet(setStoreNames, keys, values)
           },
           measure: i => db.get(i.toString(), i, 'readwrite'),
           after: db.clear,
@@ -224,13 +227,15 @@ const generateTests = ({
         measure: 'getAll',
         spec: {
           before: async () => {
-            const keys = Array(prefill)
-              .fill(0)
-              .map((_, i) => i)
-            const storeNames = Object.keys(keys)
+            // unique store names
+            const storeNames = Object.keys(Array(prefill).fill(0))
+            // store names parallel to keys (i.e. prefill * measure)
+            const setStoreNames = storeNames.flatMap((storeName, i) => Array(iterations).fill(storeName))
+            // set [iterations] values in each store, with keys 0..iterations-1
+            const keys = setStoreNames.map((_, i) => i % iterations)
             const values = keys.map(() => payload)
             await db.createStore(storeNames)
-            await db.bulkSet(storeNames, keys, values)
+            await db.bulkSet(setStoreNames, keys, values)
           },
           measure: async i => {
             await db.getAll?.(i.toString())
@@ -245,19 +250,19 @@ const generateTests = ({
         spec: {
           bulk: iterations,
           before: async () => {
-            const keys = Array(prefill)
-              .fill(0)
-              .map((_, i) => i)
-            const storeNames = Object.keys(keys)
+            // unique store names
+            const storeNames = Object.keys(Array(prefill).fill(0))
+            // store names parallel to keys (i.e. prefill * measure)
+            const setStoreNames = storeNames.flatMap((storeName, i) => Array(iterations).fill(storeName))
+            // set [iterations] values in each store, with keys 0..iterations-1
+            const keys = setStoreNames.map((_, i) => i % iterations)
             const values = keys.map(() => payload)
             await db.createStore(storeNames)
-            await db.bulkSet(storeNames, keys, values)
+            await db.bulkSet(setStoreNames, keys, values)
           },
           measure: async i => {
-            const keys = Array(iterations)
-              .fill(0)
-              .map((value, i) => i)
-            const storeNames = Object.keys(keys)
+            const storeNames = Object.keys(Array(iterations).fill(0))
+            const keys = storeNames.map(() => randRange(iterations))
             await db.bulkGet?.(storeNames, keys, 'readonly')
           },
           after: db.clear,
@@ -270,19 +275,19 @@ const generateTests = ({
         spec: {
           bulk: iterations,
           before: async () => {
-            const keys = Array(prefill)
-              .fill(0)
-              .map((_, i) => i)
-            const storeNames = Object.keys(keys)
+            // unique store names
+            const storeNames = Object.keys(Array(prefill).fill(0))
+            // store names parallel to keys (i.e. prefill * measure)
+            const setStoreNames = storeNames.flatMap((storeName, i) => Array(iterations).fill(storeName))
+            // set [iterations] values in each store, with keys 0..iterations-1
+            const keys = setStoreNames.map((_, i) => i % iterations)
             const values = keys.map(() => payload)
             await db.createStore(storeNames)
-            await db.bulkSet(storeNames, keys, values)
+            await db.bulkSet(setStoreNames, keys, values)
           },
           measure: async i => {
-            const keys = Array(iterations)
-              .fill(0)
-              .map((value, i) => i)
-            const storeNames = Object.keys(keys)
+            const storeNames = Object.keys(Array(iterations).fill(0))
+            const keys = storeNames.map(() => randRange(iterations))
             await db.bulkGet?.(storeNames, keys, 'readwrite')
           },
           after: db.clear,
