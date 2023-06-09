@@ -271,6 +271,20 @@ const generateTests = ({
             after: db.clear,
           },
         },
+
+        {
+          prefill: 'object stores',
+          measure: 'bulkGet (single store)',
+          spec: {
+            bulk: limit,
+            before: prefillObjectStores,
+            measure: async i => {
+              const keys = Object.keys(Array(limit).fill(0))
+              await db.bulkGet?.('0', keys, 'readonly')
+            },
+            after: db.clear,
+          },
+        },
       ],
     }
   })
