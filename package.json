@@ -1,7 +1,8 @@
 {
-  "name": "opfs-benchmark",
-  "description": "A benchmark that tests the performance of the new OPFS (Origin Private File System) vs IndexedDB.",
+  "name": "indexeddb-benchmark",
+  "description": "IndexedDB performance benchmark",
   "private": true,
+  "license": "ISC",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

@@ -217,10 +217,7 @@ function App() {
         textAlign: 'center',
       }}
     >
-      <h1>OPFS Benchmark</h1>
-      <p>
-        <b>OPFS</b> vs <b>IndexedDB</b> performance
-      </p>
+      <h1>IndexedDB Benchmark</h1>
 
       <section style={{ margin: '2em' }}>
         <h2 style={{ marginBottom: '1.2em' }}>Config</h2>
